@@ -1,0 +1,111 @@
+{% extends "home.html" %}
+
+{% block title %}{{ 'Bakım Kaydı Düzenle' if maintenance else 'Yeni Bakım Kaydı' }}{% endblock %}
+{% block topbar_title %}{{ 'Bakım Kaydı Düzenle' if maintenance else 'Yeni Bakım Kaydı' }}{% endblock %}
+{% block topbar_sub %}{{ maintenance.maintenance_id if maintenance else 'Yeni bakım işlemi oluştur' }}{% endblock %}
+{% block topbar_actions %}
+  <a href="/maintenance" class="btn">← Geri</a>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:640px;">
+  <div class="card">
+    <form method="POST"
+          action="{{ '/maintenance/' + maintenance.maintenance_id|string + '/edit' if maintenance else '/maintenance/new' }}">
+
+      <div class="form-group">
+        <label for="equipment_id">Ekipman *</label>
+        <select id="equipment_id" name="equipment_id" required>
+          <option value="">Ekipman seçiniz...</option>
+          {% for e in equipments %}
+            <option value="{{ e.equipment_id }}"
+              {{ 'selected' if (maintenance and maintenance.equipment_id == e.equipment_id)
+                              or request.args.get('equipment_id')|int == e.equipment_id }}>
+              {{ e.equipment_name }} / ({{ e.type }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="description">Açıklama *</label>
+        <textarea id="description" name="description" rows="3" required
+                  style="resize:vertical;">{{ maintenance.description if maintenance else '' }}</textarea>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="maintenance_date">Bakım tarihi *</label>
+          <input type="date" id="maintenance_date" name="maintenance_date"
+                 value="{{ maintenance.maintenance_date if maintenance else '' }}" required>
+        </div>
+        <div class="form-group">
+          <label for="status">Durum *</label>
+          <select id="status" name="status" required>
+            <option value="Pending"     {{ 'selected' if maintenance and maintenance.status == 'Pending' }}>Bekliyor</option>
+            <option value="In Progress" {{ 'selected' if maintenance and maintenance.status == 'In Progress' }}>Devam ediyor</option>
+            <option value="Completed"   {{ 'selected' if maintenance and maintenance.status == 'Completed' }}>Tamamlandı</option>
+          </select>
+        </div>
+      </div>
+
+      {% if session.role == 'admin' %}
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="operator_id">Operatör</label>
+          <select id="operator_id" name="operator_id">
+            <option value="">Atanmadı</option>
+            {% for op in operators %}
+              <option value="{{ op.operator_id }}"
+                {{ 'selected' if maintenance and maintenance.operator_id == op.operator_id }}>
+                {{ op.first_name }} {{ op.last_name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="cost">Maliyet (₺)</label>
+          <input type="number" id="cost" name="cost" step="0.01" min="0"
+                 value="{{ maintenance.cost if maintenance else '' }}">
+        </div>
+      </div>
+      {% else %}
+      <!-- Teknisyen kendi kaydını güncelliyorsa sadece durum değiştirebilir -->
+      <input type="hidden" name="operator_id" value="{{ session.user_id }}">
+      {% endif %}
+
+      <!-- Bileşenler (admin only) -->
+      {% if session.role == 'admin' and components %}
+      <div class="form-group">
+        <label>Kullanılan bileşenler</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:180px;overflow-y:auto;
+                    padding:10px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);">
+          {% for c in components %}
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;
+                        text-transform:none;letter-spacing:0;color:var(--text2);cursor:pointer;">
+            <input type="checkbox" name="component_ids" value="{{ c.component_id }}"
+              {{ 'checked' if maintenance and c.component_id in selected_components }}
+              style="width:auto;accent-color:var(--purple);">
+            {{ c.component_name }}
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="form-group">
+        <label for="notes">Notlar</label>
+        <textarea id="notes" name="notes" rows="2"
+                  style="resize:vertical;">{{ maintenance.notes if maintenance else '' }}</textarea>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+        <a href="/maintenance" class="btn">İptal</a>
+        <button type="submit" class="btn btn-primary">
+          {{ 'Değişiklikleri kaydet' if maintenance else 'Bakım kaydını oluştur' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

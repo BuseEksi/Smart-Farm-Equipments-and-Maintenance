@@ -1,0 +1,108 @@
+{% extends "home.html" %}
+
+{% block title %}Bakım Kayıtları{% endblock %}
+{% block topbar_title %}Bakım Kayıtları{% endblock %}
+{% block topbar_sub %}{{ total }} kayıt{% endblock %}
+{% block topbar_actions %}
+  {% if session.role == 'admin' %}
+    <a href="/maintenance/new" class="btn btn-primary">+ Yeni bakım kaydı</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+
+<!-- Filtreler -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+  <form method="GET" action="/maintenance" style="display:flex;gap:8px;flex-wrap:wrap;">
+    <input type="text" name="q" value="{{ request.args.get('q','') }}"
+           placeholder="Ekipman veya açıklama ara..." style="max-width:220px;">
+    <select name="status" style="max-width:140px;">
+      <option value="">Tüm durumlar</option>
+      <option value="Pending"     {{ 'selected' if request.args.get('status')=='Pending' }}>Bekliyor</option>
+      <option value="In Progress" {{ 'selected' if request.args.get('status')=='In Progress' }}>Devam ediyor</option>
+      <option value="Completed"   {{ 'selected' if request.args.get('status')=='Completed' }}>Tamamlandı</option>
+    </select>
+    <input type="date" name="date_from" value="{{ request.args.get('date_from','') }}"
+           style="max-width:140px;" title="Başlangıç tarihi">
+    <input type="date" name="date_to" value="{{ request.args.get('date_to','') }}"
+           style="max-width:140px;" title="Bitiş tarihi">
+    <button type="submit" class="btn">Filtrele</button>
+    <a href="/maintenance" class="btn">✕</a>
+  </form>
+</div>
+
+<div class="card" style="padding:0;">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Ekipman</th>
+          <th>Açıklama</th>
+          <th>Operatör</th>
+          <th>Tarih</th>
+          {% if session.role == 'admin' %}<th>Maliyet</th>{% endif %}
+          <th>Durum</th>
+          <th>İşlemler</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in maintenance %}
+        <tr>
+          <td class="text-mono text-dim">{{ m.maintenance_id }}</td>
+          <td>
+            <a href="/equipment/{{ m.equipment_id }}" style="color:var(--purple2);text-decoration:none;">
+              {{ m.equipment_name }}
+            </a>
+          </td>
+          <td class="text-muted">{{ m.description | truncate(35) }}</td>
+          <td class="text-muted">{{ m.operator_name or '—' }}</td>
+          <td class="text-mono text-dim" style="font-size:11px;">{{ m.maintenance_date }}</td>
+          {% if session.role == 'admin' %}
+          <td class="text-mono" style="font-size:11px;">{{ '₺{:,.2f}'.format(m.cost) if m.cost else '—' }}</td>
+          {% endif %}
+          <td>
+            {% if m.status == 'Completed' %}
+              <span class="badge badge-ok">Tamamlandı</span>
+            {% elif m.status == 'In Progress' %}
+              <span class="badge badge-warn">Devam ediyor</span>
+            {% elif m.status == 'Pending' %}
+              <span class="badge badge-info">Bekliyor</span>
+            {% else %}
+              <span class="badge badge-err">Arıza</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display:flex;gap:5px;">
+              <a href="/maintenance/{{ m.maintenance_id }}" class="btn btn-sm">Detay</a>
+              {% if session.role == 'admin' or (session.role == 'tech' and m.operator_id == session.user_id) %}
+                <a href="/maintenance/{{ m.maintenance_id }}/edit" class="btn btn-sm">Düzenle</a>
+              {% endif %}
+              {% if session.role == 'admin' %}
+                <form method="POST" action="/maintenance/{{ m.maintenance_id }}/delete"
+                      onsubmit="return confirm('Bu bakım kaydını silmek istediğinize emin misiniz?');"
+                      style="display:inline;">
+                  <button type="submit" class="btn btn-sm btn-danger">Sil</button>
+                </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">Kayıt bulunamadı.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if total_pages > 1 %}
+<div style="display:flex;gap:6px;justify-content:center;margin-top:16px;">
+  {% for p in range(1, total_pages+1) %}
+    <a href="?page={{ p }}&q={{ request.args.get('q','') }}&status={{ request.args.get('status','') }}"
+       class="btn btn-sm {% if p == current_page %}btn-primary{% endif %}">{{ p }}</a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

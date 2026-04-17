@@ -1,0 +1,90 @@
+{% extends "home.html" %}
+
+{% block title %}{{ 'Edit Equipment' if equipment else 'New Equipment' }}{% endblock %}
+{% block topbar_title %}{{ 'Edit Equipment' if equipment else 'New Equipment' }}{% endblock %}
+{% block topbar_sub %}{{ equipment.equipment_name if equipment else 'Create new equipment record' }}{% endblock %}
+{% block topbar_actions %}
+  <a href="/equipment" class="btn">← Geri</a>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:600px;">
+  <div class="card">
+    <form method="POST"
+          action="{{ '/equipment/edit/' + equipment.equipment_id|string  if equipment else '/equipment/new' }}">
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="equipment_name">Equipment Name *</label>
+          <input type="text" id="equipment_name" name="equipment_name"
+                 value="{{ equipment.equipment_name if equipment else '' }}" required>
+        </div>
+        <div class="form-group">
+          <label for="equipment_type">Type *</label>
+          <select id="equipment_type" name="equipment_type" required>
+            <option value="">Choose...</option>
+            {% for t in ['Agriculture', 'Harvesting', 'Irrigation', 'Pest Control', 'Transportation', 'Other'] %}
+              <option value="{{ t }}" {{ 'selected' if equipment and equipment.type == t }}>{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="brand">Brand</label>
+          <input type="text" id="brand" name="brand"
+                 value="{{ equipment.brand if equipment else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="model">Model</label>
+          <input type="text" id="model" name="model"
+                 value="{{ equipment.model if equipment else '' }}">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="serial_number">Serıal Number</label>
+          <input type="text" id="serial_number" name="serial_number"
+                 value="{{ equipment.serial_number if equipment else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="purchase_date">Purchase Date</label>
+          <input type="date" id="purchase_date" name="purchase_date"
+                 value="{{ equipment.purchase_date if equipment else '' }}">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="purchase_cost">Purchase Cost</label>
+          <input type="number" id="purchase_cost" name="purchase_cost" step="0.01" min="0"
+                 value="{{ equipment.purchase_cost if equipment else '' }}">
+        </div>
+        <div class="form-group">
+          <label for="status">Status *</label>
+          <select id="status" name="status" required>
+            <option value="active"      {{ 'selected' if equipment and equipment.status == 'active' }}>Active</option>
+            <option value="maintenance" {{ 'selected' if equipment and equipment.status == 'maintenance' }}>Maintenance</option>
+            <option value="broken"      {{ 'selected' if equipment and equipment.status == 'broken' }}>Broken</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="3"
+                  style="resize:vertical;">{{ equipment.notes if equipment else '' }}</textarea>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+        <a href="/equipment" class="btn">Cancel</a>
+        <button type="submit" class="btn btn-primary">
+          {{ 'Save changes' if equipment else 'Add equipment' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

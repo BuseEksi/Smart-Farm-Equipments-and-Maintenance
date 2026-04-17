@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartFarm — {% block title %}Dashboard{% endblock %}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  {% if session.get('logged_in') %}
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <div class="logo-icon">
+          <svg viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="8" width="5" height="6" rx="1.5" fill="#8c64e6"/>
+            <rect x="9" y="4" width="5" height="10" rx="1.5" fill="#b396f0"/>
+            <path d="M4 8V5a2 2 0 014 0v1" stroke="#8c64e6" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-name">FARMAINTENANCE</div>
+          <div class="logo-sub">equipment registry</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-section">
+        <div class="nav-heading">General</div>
+        <a href="/dashboard" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+          <i class="icon">▦</i> Dashboard
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-heading">Management</div>
+        <a href="/equipment" class="nav-link {% if active_page == 'equipment' %}active{% endif %}">
+          <i class="icon">⚙</i> Equipments
+        </a>
+        <a href="/maintenance" class="nav-link {% if active_page == 'maintenance' %}active{% endif %}">
+          <i class="icon">🔧</i> Maintenance
+          {% if pending_count and pending_count > 0 %}
+            <span class="nav-badge warn">{{ pending_count }}</span>
+          {% endif %}
+        </a>
+        <a href="/components" class="nav-link {% if active_page == 'components' %}active{% endif %}">
+          <i class="icon">◈</i> Components
+        </a>
+        {% if session.role == 'admin' %}
+        <a href="/operators" class="nav-link {% if active_page == 'operators' %}active{% endif %}">
+          <i class="icon">◉</i> Operators
+        </a>
+        {% endif %}
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-heading">Analitics</div>
+        <a href="/queries" class="nav-link {% if active_page == 'queries' %}active{% endif %}">
+          <i class="icon">◈</i> Adv. Queries
+        </a>
+        {% if session.role == 'admin' %}
+        <a href="/reports" class="nav-link {% if active_page == 'reports' %}active{% endif %}">
+          <i class="icon">▤</i> Reports
+        </a>
+        {% endif %}
+      </div>
+
+      <div class="nav-section" style="margin-top: auto;">
+        <a href="/logout" class="nav-link" style="color: var(--red);">
+          <i class="icon">←</i> Log Out
+        </a>
+      </div>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="user-avatar">{{ session.initials or 'U' }}</div>
+      <div>
+        <div class="user-name">{{ session.username or 'User' }}</div>
+        <div class="user-role {{ session.role }}">
+            {% if session.role == 'admin' %} Admin
+            {% elif session.role == 'technician' %} Technician
+            {% else %} User {% endif %}
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+
+        <div class="topbar-title">{% block topbar_title %}Dashboard{% endblock %}</div>
+
+
+      <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
+    </div>
+
+    <div class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, msg in messages %}
+          <div class="flash flash-{{ category }}">{{ msg }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+  {% else %}
+
+  <div class="auth-container">
+    {% block auth_content %}
+    <div class="auth-card">
+        <div class="logo-mark" style="justify-content: center; margin-bottom: 35px; gap: 12px;">
+            <div class="logo-icon" style="width: 40px; height: 40px;">
+                <svg viewBox="0 0 16 16" fill="none">
+                    <rect x="2" y="8" width="5" height="6" rx="1.5" fill="#8c64e6"/>
+                    <rect x="9" y="4" width="5" height="10" rx="1.5" fill="#b396f0"/>
+                    <path d="M4 8V5a2 2 0 014 0v1" stroke="#8c64e6" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div class="logo-name" style="font-size: 18px;">SmartFarm</div>
+        </div>
+
+        <h2><span>Log In</span></h2>
+
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" name="email" placeholder="adiniz@sirket.com" required>
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Log in</button>
+        </form>
+
+        <div class="auth-footer">
+             <a href="/signup">Sign In</a>
+        </div>
+    </div>
+    {% endblock %}
+  </div>
+
+  {% endif %}
+
+</body>
+</html>
