@@ -151,3 +151,4 @@ DROP COLUMN total_cost;
 
 ALTER TABLE maintenance
 ADD COLUMN maintenance_date DATE NOT NULL;
+

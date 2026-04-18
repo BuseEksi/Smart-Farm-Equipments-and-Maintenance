@@ -11,7 +11,7 @@
 <div style="max-width:640px;">
   <div class="card">
     <form method="POST"
-          action="{{ '/maintenance/' + maintenance.maintenance_id|string + '/edit' if maintenance else '/maintenance/new' }}">
+          action="{{ '/maintenance/edit/' + maintenance.maintenance_id|string if maintenance else '/maintenance/new' }}">
 
       <div class="form-group">
         <label for="equipment_id">Ekipman *</label>

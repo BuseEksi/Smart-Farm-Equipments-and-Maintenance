@@ -76,10 +76,10 @@
             <div style="display:flex;gap:5px;">
               <a href="/maintenance/{{ m.maintenance_id }}" class="btn btn-sm">Detay</a>
               {% if session.role == 'admin' or (session.role == 'tech' and m.operator_id == session.user_id) %}
-                <a href="/maintenance/{{ m.maintenance_id }}/edit" class="btn btn-sm">Düzenle</a>
+                <a href="/maintenance/edit/{{ m.maintenance_id }}" class="btn btn-sm">Düzenle</a>
               {% endif %}
               {% if session.role == 'admin' %}
-                <form method="POST" action="/maintenance/{{ m.maintenance_id }}/delete"
+                <form method="POST" action="/maintenance/delete/{{ m.maintenance_id }}"
                       onsubmit="return confirm('Bu bakım kaydını silmek istediğinize emin misiniz?');"
                       style="display:inline;">
                   <button type="submit" class="btn btn-sm btn-danger">Sil</button>

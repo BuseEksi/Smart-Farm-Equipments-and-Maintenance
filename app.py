@@ -92,7 +92,7 @@ def equipment():
         query += " AND equipment_name ILIKE %s"
         params.append(f"%{q}%")
     if status:
-        query += " AND status = %s"
+        query += " AND status = %s::maintenance_status"
         params.append(status)
     if type_:
         query += " AND type = %s"
@@ -192,13 +192,13 @@ def maintenance():
         query += " AND equipment_name ILIKE %s"
         params.append(f"%{q}%")
     if status:
-        query += " AND status = %s"
+        query += " AND m.status = %s"
         params.append(status)
     if date_from:
-        query += " AND date_from = %s"
+        query += " AND m.date_from >= %s::date"
         params.append(date_from)
     if date_to:
-        query += " AND date_to = %s"
+        query += " AND m.date_to <= %s::date"
         params.append(date_to)
 
     cur.execute(query, params)
@@ -223,17 +223,60 @@ def maintenance_new_form():
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     cur.execute("INSERT INTO maintenance (status,  equipment_id, description, operator_id, cost, notes, maintenance_date) "
-                "VALUES (%s, %s, %s, %s, %s, %s ,%s)",(request.form["status"],
-                                               request.form["equipment_id"],
-                                               request.form["description"],
-                                               request.form["operator_id"] or None,
-                                               request.form["cost"] or None,
-                                               request.form["notes"] or None,
-                                               request.form["maintenance_date"]) )
+                "VALUES (%s, %s, %s, %s, %s, %s ,%s)", (request.form["status"],
+                                                        request.form["equipment_id"],
+                                                        request.form["description"],
+                                                        request.form["operator_id"] or None,
+                                                        request.form["cost"] or None,
+                                                        request.form["notes"] or None,
+                                                        request.form["maintenance_date"]))
     conn.commit()
     cur.close()
     conn.close()
     return redirect(url_for('maintenance'))
+
+@app.route("/maintenance/delete/<int:maintenance_id>", methods=["POST"])
+def maintenance_delete(maintenance_id):
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("DELETE FROM maintenance WHERE maintenance_id = %s", (maintenance_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return redirect(url_for('maintenance'))
+
+@app.route("/maintenance/edit/<int:maintenance_id>", methods=["GET","POST"])
+def maintenance_edit(maintenance_id):
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT equipment_id , equipment_name, type FROM equipments ORDER BY equipment_id DESC")
+    equipments = cur.fetchall()
+    if request.method == "POST":
+        status = request.form["status"]
+        equipment_id = request.form["equipment_id"]
+        description = request.form["description"]
+        maintenance_date = request.form["maintenance_date"]
+        operator_id = request.form["operator_id"] or None
+        cost = request.form["cost"] or None
+        notes = request.form["notes"] or None
+        cur.execute("UPDATE maintenance SET equipment_id = %s , status= %s ,description = %s,"
+                        " maintenance_date = %s , operator_id = %s , cost = %s ,notes = %s WHERE maintenance_id = %s",
+                    (equipment_id, status, description, maintenance_date, operator_id, cost, notes, maintenance_id))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect(url_for('maintenance'))
+    else:
+        cur.execute("SELECT * FROM maintenance WHERE maintenance_id = %s", (maintenance_id,))
+        maintenance = cur.fetchone()
+        cur.close()
+        conn.close()
+        return render_template("maintenance_form.html", maintenance=maintenance, equipments=equipments)
+
+@app.route("/component", methods=["GET"])
+def component():
+    return render_template("component.html")
+
 
 
 if __name__ == '__main__':
