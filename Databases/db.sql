@@ -71,8 +71,10 @@ DROP column user_nickname;
 ALTER TABLE users
 ADD column email VARCHAR(50) NOT NULL DEFAULT 'no-reply@example.com';
 
+
+
 UPDATE users
-SET email = 'bus3eks1@gmail.com'
+SET user_role = 'admin'
 WHERE user_id =1;
 
 UPDATE users
@@ -152,3 +154,47 @@ DROP COLUMN total_cost;
 ALTER TABLE maintenance
 ADD COLUMN maintenance_date DATE NOT NULL;
 
+ALTER TABLE components
+ADD COLUMN category VARCHAR(15) DEFAULT NULL;
+
+ALTER TABLE components
+ADD COLUMN stock_quantity INT DEFAULT 0;
+
+ALTER TABLE components
+RENAME COLUMN cost TO unit_cost;
+
+ALTER TABLE components
+RENAME COLUMN name TO component_name;
+
+ALTER TABLE components
+RENAME COLUMN unit_cost TO unit_price;
+
+ALTER TABLE components
+ADD COLUMN notes VARCHAR(100) DEFAULT NULL;
+
+ALTER TABLE operators
+ADD COLUMN last_name VARCHAR(15) NOT NULL DEFAULT NULL;
+
+ALTER TABLE operators
+ADD COLUMN hire_date DATE;
+
+ALTER TABLE operators
+ADD COLUMN phone INT;
+
+ALTER TABLE operators
+ADD COLUMN email VARCHAR(50) NOT NULL DEFAULT 'no-reply@example.com';
+
+ALTER TABLE operators
+RENAME COLUMN op_id TO operator_id;
+
+ALTER TABLE operators
+DROP COLUMN certificate_expiry_date;
+
+ALTER TABLE operators
+DROP COLUMN phone;
+
+ALTER TABLE operators
+ADD COLUMN phone VARCHAR(11);
+
+ALTER TABLE equipments ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
+ALTER TABLE equipments ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();

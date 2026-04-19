@@ -57,7 +57,7 @@
           </td>
           <td class="text-muted">{{ m.description | truncate(35) }}</td>
           <td class="text-muted">{{ m.operator_name or '—' }}</td>
-          <td class="text-mono text-dim" style="font-size:11px;">{{ m.maintenance_date }}</td>
+          <td class="text-mono text-dim" style="font-size:11px;">{{ m.date_from }}</td>
           {% if session.role == 'admin' %}
           <td class="text-mono" style="font-size:11px;">{{ '₺{:,.2f}'.format(m.cost) if m.cost else '—' }}</td>
           {% endif %}

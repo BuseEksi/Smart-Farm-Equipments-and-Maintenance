@@ -1,0 +1,56 @@
+{% extends "home.html" %}
+
+{% block title %}Operatörler{% endblock %}
+{% block topbar_title %}Operatörler{% endblock %}
+{% block topbar_sub %}{{ total }} operatör kayıtlı{% endblock %}
+{% block topbar_actions %}
+  <a href="/operators/new" class="btn btn-primary">+ Yeni operatör</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card" style="padding:0;">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Ad Soyad</th>
+          <th>Sertifika No</th>
+          <th>Telefon</th>
+          <th>E-posta</th>
+          <th>İşe giriş</th>
+          <th>Bakım sayısı</th>
+          <th>İşlemler</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for op in operators %}
+        <tr>
+          <td class="text-mono text-dim">{{ op.operator_id }}</td>
+          <td style="color:var(--text);font-weight:500;">{{ op.operator_name }}</td>
+          <td class="text-mono" style="font-size:11px;">{{ op.certificate_no or '—' }}</td>
+          <td class="text-mono text-muted" style="font-size:11px;">{{ op.phone or '—' }}</td>
+          <td class="text-muted" style="font-size:11px;">{{ op.email or '—' }}</td>
+          <td class="text-mono text-dim" style="font-size:11px;">{{ op.hire_date or '—' }}</td>
+          <td class="text-mono" style="color:var(--purple);">{{ op.maintenance_count }}</td>
+          <td>
+            <div style="display:flex;gap:5px;">
+              <a href="/operators/edit/{{ op.operator_id }}" class="btn btn-sm">Düzenle</a>
+              <form method="POST" action="/operators/delete/{{ op.operator_id }}"
+                    onsubmit="return confirm('Bu operatörü silmek istediğinize emin misiniz?');"
+                    style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-danger">Sil</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">Kayıt bulunamadı.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
