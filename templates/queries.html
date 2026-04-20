@@ -9,20 +9,20 @@
 <!-- Q1 -->
 <div class="card mb-16">
   <div class="card-title">
-    <span><span class="text-mono text-dim" style="margin-right:8px;">Q1</span>Most maintained equipment</span>
+    <span><span class="text-mono text-dim" style="margin-right:8px;"></span>Most maintained equipment</span>
     <a href="/queries/1" class="btn btn-sm">Run →</a>
   </div>
   <p style="font-size:11px;color:var(--text3);font-family:var(--mono);">Equipment list sorted by total number of maintenance records</p>
   {% if results.q1 %}
   <div class="table-wrap" style="margin-top:12px;">
     <table>
-      <thead><tr><th>#</th><th>Equipment</th><th>Type</th><th>Maintenance count</th></tr></thead>
+      <thead><tr><th>#</th><th>Equipment</th><th>Type</th><th>Maintenance Count</th></tr></thead>
       <tbody>
         {% for row in results.q1 %}
         <tr>
           <td class="text-mono text-dim">{{ loop.index }}</td>
           <td><a href="/equipment/{{ row.equipment_id }}" style="color:var(--purple2);text-decoration:none;">{{ row.equipment_name }}</a></td>
-          <td class="text-muted">{{ row.type }}</td>
+          <td class="text-muted">{{ row.type or '—' }}</td>
           <td class="text-mono" style="color:var(--purple);">{{ row.maintenance_count }}</td>
         </tr>
         {% endfor %}
@@ -35,7 +35,7 @@
 <!-- Q2 -->
 <div class="card mb-16">
   <div class="card-title">
-    <span><span class="text-mono text-dim" style="margin-right:8px;">Q2</span>Maintenance count per operator</span>
+    <span><span class="text-mono text-dim" style="margin-right:8px;"></span>Maintenance count per operator</span>
     <a href="/queries/2" class="btn btn-sm">Run →</a>
   </div>
   <p style="font-size:11px;color:var(--text3);font-family:var(--mono);">Number of maintenance tasks performed by each operator</p>
@@ -43,11 +43,11 @@
   <div class="table-wrap" style="margin-top:12px;">
     <table>
       <thead>
-      <tr>
+        <tr>
           <th>Operator</th>
-          <th>Certificate no.</th>
-          <th>Maintenance count</th>
-      </tr>
+          <th>Certificate No.</th>
+          <th>Maintenance Count</th>
+        </tr>
       </thead>
       <tbody>
         {% for row in results.q2 %}
@@ -67,7 +67,7 @@
 {% if session.role == 'admin' %}
 <div class="card mb-16">
   <div class="card-title">
-    <span><span class="text-mono text-dim" style="margin-right:8px;">Q3</span>Highest cost maintenance records</span>
+    <span><span class="text-mono text-dim" style="margin-right:8px;"></span>Highest cost maintenance records</span>
     <a href="/queries/3" class="btn btn-sm">Run →</a>
   </div>
   <p style="font-size:11px;color:var(--text3);font-family:var(--mono);">Maintenance records sorted by cost — admin only</p>
@@ -80,7 +80,7 @@
         <tr>
           <td class="text-mono text-dim">{{ row.maintenance_id }}</td>
           <td><a href="/equipment/{{ row.equipment_id }}" style="color:var(--purple2);text-decoration:none;">{{ row.equipment_name }}</a></td>
-          <td class="text-mono text-dim" style="font-size:11px;">{{ row.maintenance_date }}</td>
+          <td class="text-mono text-dim" style="font-size:11px;">{{ row.date_from }}</td>
           <td class="text-mono" style="color:var(--amber);">₺{{ "{:,.2f}".format(row.cost) }}</td>
         </tr>
         {% endfor %}
@@ -94,14 +94,14 @@
 <!-- Q4 -->
 <div class="card mb-16">
   <div class="card-title">
-    <span><span class="text-mono text-dim" style="margin-right:8px;">Q4</span>Most used components</span>
+    <span><span class="text-mono text-dim" style="margin-right:8px;"></span>Most used components</span>
     <a href="/queries/4" class="btn btn-sm">Run →</a>
   </div>
   <p style="font-size:11px;color:var(--text3);font-family:var(--mono);">Component ranking by usage count across maintenance records</p>
   {% if results.q4 %}
   <div class="table-wrap" style="margin-top:12px;">
     <table>
-      <thead><tr><th>Component</th><th>Category</th><th>Usage count</th></tr></thead>
+      <thead><tr><th>Component</th><th>Category</th><th>Usage Count</th></tr></thead>
       <tbody>
         {% for row in results.q4 %}
         <tr>
@@ -120,20 +120,20 @@
 {% if session.role == 'admin' %}
 <div class="card mb-16">
   <div class="card-title">
-    <span><span class="text-mono text-dim" style="margin-right:8px;">Q5</span>Monthly maintenance cost trend</span>
+    <span><span class="text-mono text-dim" style="margin-right:8px;"></span>Monthly maintenance cost trend</span>
     <a href="/queries/5" class="btn btn-sm">Run →</a>
   </div>
   <p style="font-size:11px;color:var(--text3);font-family:var(--mono);">Total monthly maintenance cost for the last 12 months</p>
   {% if results.q5 %}
   <div class="table-wrap" style="margin-top:12px;">
     <table>
-      <thead><tr><th>Month</th><th>Maintenance count</th><th>Total cost</th></tr></thead>
+      <thead><tr><th>Month</th><th>Maintenance Count</th><th>Total Cost</th></tr></thead>
       <tbody>
         {% for row in results.q5 %}
         <tr>
           <td class="text-mono text-dim">{{ row.month }}</td>
           <td class="text-mono">{{ row.count }}</td>
-          <td class="text-mono" style="color:var(--amber);">₺{{ "{:,.2f}".format(row.total_cost) }}</td>
+          <td class="text-mono" style="color:var(--amber);">{{ '₺{:,.2f}'.format(row.total_cost) if row.total_cost else '—' }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -146,20 +146,20 @@
 <!-- Q6 -->
 <div class="card mb-16">
   <div class="card-title">
-    <span><span class="text-mono text-dim" style="margin-right:8px;">Q6</span>Average maintenance duration by equipment type</span>
+    <span><span class="text-mono text-dim" style="margin-right:8px;"></span>Average maintenance duration by equipment type</span>
     <a href="/queries/6" class="btn btn-sm">Run →</a>
   </div>
   <p style="font-size:11px;color:var(--text3);font-family:var(--mono);">Average maintenance duration (days) for each equipment type</p>
   {% if results.q6 %}
   <div class="table-wrap" style="margin-top:12px;">
     <table>
-      <thead><tr><th>Equipment type</th><th>Maintenance count</th><th>Avg. duration (days)</th></tr></thead>
+      <thead><tr><th>Equipment Type</th><th>Maintenance Count</th><th>Avg. Duration (days)</th></tr></thead>
       <tbody>
         {% for row in results.q6 %}
         <tr>
-          <td style="color:var(--text);">{{ row.equipment_type }}</td>
+          <td style="color:var(--text);">{{ row.type }}</td>
           <td class="text-mono">{{ row.count }}</td>
-          <td class="text-mono" style="color:var(--purple);">{{ "%.1f"|format(row.avg_days) }}</td>
+          <td class="text-mono" style="color:var(--purple);">{{ "%.1f"|format(row.avg_days.days) if row.avg_days else '—' }}</td>
         </tr>
         {% endfor %}
       </tbody>

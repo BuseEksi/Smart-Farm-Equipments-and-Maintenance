@@ -1,10 +1,10 @@
 {% extends "home.html" %}
 
-{% block title %}Operatörler{% endblock %}
-{% block topbar_title %}Operatörler{% endblock %}
-{% block topbar_sub %}{{ total }} operatör kayıtlı{% endblock %}
+{% block title %}Operators{% endblock %}
+{% block topbar_title %}Operators{% endblock %}
+{% block topbar_sub %}{{ total }} operators registered{% endblock %}
 {% block topbar_actions %}
-  <a href="/operators/new" class="btn btn-primary">+ Yeni operatör</a>
+  <a href="/operators/new" class="btn btn-primary">+ New Operator</a>
 {% endblock %}
 
 {% block content %}
@@ -15,13 +15,13 @@
       <thead>
         <tr>
           <th>ID</th>
-          <th>Ad Soyad</th>
-          <th>Sertifika No</th>
-          <th>Telefon</th>
-          <th>E-posta</th>
-          <th>İşe giriş</th>
-          <th>Bakım sayısı</th>
-          <th>İşlemler</th>
+          <th>Full Name</th>
+          <th>Certificate No</th>
+          <th>Phone</th>
+          <th>Email</th>
+          <th>Hire Date</th>
+          <th>Maintenance Count</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -36,17 +36,17 @@
           <td class="text-mono" style="color:var(--purple);">{{ op.maintenance_count }}</td>
           <td>
             <div style="display:flex;gap:5px;">
-              <a href="/operators/edit/{{ op.operator_id }}" class="btn btn-sm">Düzenle</a>
+              <a href="/operators/edit/{{ op.operator_id }}" class="btn btn-sm">Edit</a>
               <form method="POST" action="/operators/delete/{{ op.operator_id }}"
-                    onsubmit="return confirm('Bu operatörü silmek istediğinize emin misiniz?');"
+                    onsubmit="return confirm('Are you sure you want to delete this operator?');"
                     style="display:inline;">
-                <button type="submit" class="btn btn-sm btn-danger">Sil</button>
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
               </form>
             </div>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">Kayıt bulunamadı.</td></tr>
+        <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">No records found.</td></tr>
         {% endfor %}
       </tbody>
     </table>

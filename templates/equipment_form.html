@@ -4,14 +4,14 @@
 {% block topbar_title %}{{ 'Edit Equipment' if equipment else 'New Equipment' }}{% endblock %}
 {% block topbar_sub %}{{ equipment.equipment_name if equipment else 'Create new equipment record' }}{% endblock %}
 {% block topbar_actions %}
-  <a href="/equipment" class="btn">← Geri</a>
+  <a href="/equipment" class="btn">← Back</a>
 {% endblock %}
 
 {% block content %}
 <div style="max-width:600px;">
   <div class="card">
     <form method="POST"
-          action="{{ '/equipment/edit/' + equipment.equipment_id|string  if equipment else '/equipment/new' }}">
+          action="{{ '/equipment/edit/' + equipment.equipment_id|string if equipment else '/equipment/new' }}">
 
       <div class="grid-2">
         <div class="form-group">
@@ -45,7 +45,7 @@
 
       <div class="grid-2">
         <div class="form-group">
-          <label for="serial_number">Serıal Number</label>
+          <label for="serial_number">Serial Number</label>
           <input type="text" id="serial_number" name="serial_number"
                  value="{{ equipment.serial_number if equipment else '' }}">
         </div>
@@ -65,9 +65,9 @@
         <div class="form-group">
           <label for="status">Status *</label>
           <select id="status" name="status" required>
-            <option value="active"      {{ 'selected' if equipment and equipment.status == 'active' }}>Active</option>
-            <option value="maintenance" {{ 'selected' if equipment and equipment.status == 'maintenance' }}>Maintenance</option>
-            <option value="broken"      {{ 'selected' if equipment and equipment.status == 'broken' }}>Broken</option>
+            <option value="Active"       {{ 'selected' if equipment and equipment.status == 'Active' }}>Active</option>
+            <option value="Maintenance"  {{ 'selected' if equipment and equipment.status == 'Maintenance' }}>Maintenance</option>
+            <option value="Broken"       {{ 'selected' if equipment and equipment.status == 'Broken' }}>Broken</option>
           </select>
         </div>
       </div>
@@ -81,7 +81,7 @@
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
         <a href="/equipment" class="btn">Cancel</a>
         <button type="submit" class="btn btn-primary">
-          {{ 'Save changes' if equipment else 'Add equipment' }}
+          {{ 'Save Changes' if equipment else 'Add Equipment' }}
         </button>
       </div>
     </form>

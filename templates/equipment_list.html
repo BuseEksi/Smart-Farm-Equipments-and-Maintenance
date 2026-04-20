@@ -1,8 +1,8 @@
 {% extends "home.html" %}
 
-{% block title %}Equipments{% endblock %}
-{% block topbar_title %}Equipments{% endblock %}
-{% block topbar_sub %}{{ total }} Registered Equipment {% endblock %}
+{% block title %}Equipment{% endblock %}
+{% block topbar_title %}Equipment{% endblock %}
+{% block topbar_sub %}{{ total }} Registered Equipment{% endblock %}
 {% block topbar_actions %}
   {% if session.role == 'admin' %}
     <a href="/equipment/new" class="btn btn-primary">+ New Equipment</a>
@@ -15,9 +15,9 @@
 <div style="display:flex; gap:8px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
   <form method="GET" action="/equipment" style="display:flex;gap:8px;flex:1;min-width:0;">
     <input type="text" name="q" value="{{ request.args.get('q','') }}"
-           placeholder="Search Equipment..." style="max-width:240px;">
+           placeholder="Search equipment..." style="max-width:240px;">
     <select name="status" style="max-width:140px;">
-      <option value="">All Status</option>
+      <option value="">All Statuses</option>
       <option value="Active"      {{ 'selected' if request.args.get('status')=='Active' }}>Active</option>
       <option value="Maintenance" {{ 'selected' if request.args.get('status')=='Maintenance' }}>In Maintenance</option>
       <option value="Broken"      {{ 'selected' if request.args.get('status')=='Broken' }}>Broken</option>
@@ -30,7 +30,7 @@
     </select>
     <button type="submit" class="btn">Filter</button>
     {% if request.args.get('q') or request.args.get('status') or request.args.get('type') %}
-      <a href="/equipment" class="btn">✕ Clean</a>
+      <a href="/equipment" class="btn">✕ Clear</a>
     {% endif %}
   </form>
 </div>
@@ -42,12 +42,12 @@
       <thead>
         <tr>
           <th>ID</th>
-          <th>Equipment name</th>
+          <th>Equipment Name</th>
           <th>Type</th>
           <th>Model</th>
-          <th>Date</th>
+          <th>Purchase Date</th>
           <th>Status</th>
-          <th>Operation</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -73,7 +73,7 @@
               {% if session.role == 'admin' %}
                 <a href="/equipment/edit/{{ e.equipment_id }}" class="btn btn-sm">Edit</a>
                 <form method="POST" action="/equipment/delete/{{ e.equipment_id }}"
-                      onsubmit="return confirm('Are you sure to delete this equipment?');"
+                      onsubmit="return confirm('Are you sure you want to delete this equipment?');"
                       style="display:inline;">
                   <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                 </form>
@@ -82,14 +82,14 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3);">Record is not found.</td></tr>
+        <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3);">No records found.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
 
-<!-- Sayfalama -->
+<!-- Pagination -->
 {% if total_pages > 1 %}
 <div style="display:flex;gap:6px;justify-content:center;margin-top:16px;">
   {% for p in range(1, total_pages+1) %}

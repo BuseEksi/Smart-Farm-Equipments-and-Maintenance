@@ -1,53 +1,53 @@
 {% extends "home.html" %}
 
-{% block title %}{{ 'Bileşen Düzenle' if component else 'Yeni Bileşen' }}{% endblock %}
-{% block topbar_title %}{{ 'Bileşen Düzenle' if component else 'Yeni Bileşen' }}{% endblock %}
-{% block topbar_sub %}{{ component.component_name if component else 'Yeni bileşen kaydı' }}{% endblock %}
+{% block title %}{{ 'Edit Component' if component else 'New Component' }}{% endblock %}
+{% block topbar_title %}{{ 'Edit Component' if component else 'New Component' }}{% endblock %}
+{% block topbar_sub %}{{ component.component_name if component else 'New component record' }}{% endblock %}
 {% block topbar_actions %}
-  <a href="/components" class="btn">← Geri</a>
+  <a href="/components" class="btn">← Back</a>
 {% endblock %}
 
 {% block content %}
 <div style="max-width:480px;">
   <div class="card">
     <form method="POST"
-          action="{{ '/components/edit/' + component.component_id|string  if component else '/components/new' }}">
+          action="{{ '/components/edit/' + component.component_id|string if component else '/components/new' }}">
 
       <div class="form-group">
-        <label for="component_name">Bileşen adı *</label>
+        <label for="component_name">Component Name *</label>
         <input type="text" id="component_name" name="component_name"
                value="{{ component.component_name if component else '' }}" required>
       </div>
 
       <div class="form-group">
-        <label for="category">Kategori</label>
+        <label for="category">Category</label>
         <input type="text" id="category" name="category"
                value="{{ component.category if component else '' }}"
-               placeholder="Örn: Motor, Filtre, Elektrik...">
+               placeholder="e.g. Engine, Filter, Electrical...">
       </div>
 
       <div class="grid-2">
         <div class="form-group">
-          <label for="stock_quantity">Stok adedi</label>
+          <label for="stock_quantity">Stock Quantity</label>
           <input type="number" id="stock_quantity" name="stock_quantity" min="0"
                  value="{{ component.stock_quantity if component else 0 }}">
         </div>
         <div class="form-group">
-          <label for="unit_price">Birim fiyat (₺)</label>
+          <label for="unit_price">Unit Price (₺)</label>
           <input type="number" id="unit_price" name="unit_price" step="0.01" min="0"
                  value="{{ component.unit_price if component else '' }}">
         </div>
       </div>
 
       <div class="form-group">
-        <label for="notes">Notlar</label>
+        <label for="notes">Notes</label>
         <textarea id="notes" name="notes" rows="2" style="resize:vertical;">{{ component.notes if component else '' }}</textarea>
       </div>
 
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
-        <a href="/components" class="btn">İptal</a>
+        <a href="/components" class="btn">Cancel</a>
         <button type="submit" class="btn btn-primary">
-          {{ 'Değişiklikleri kaydet' if component else 'Bileşeni ekle' }}
+          {{ 'Save Changes' if component else 'Add Component' }}
         </button>
       </div>
     </form>

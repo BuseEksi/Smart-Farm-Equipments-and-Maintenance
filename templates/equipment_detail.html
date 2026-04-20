@@ -2,109 +2,109 @@
 
 {% block title %}{{ equipment.equipment_name }}{% endblock %}
 {% block topbar_title %}{{ equipment.equipment_name }}{% endblock %}
-{% block topbar_sub %}{{ equipment.equipment_type }} · {{ equipment.brand }} {{ equipment.model }}{% endblock %}
+{% block topbar_sub %}{{ equipment.type }} · {{ equipment.brand }} {{ equipment.model }}{% endblock %}
 {% block topbar_actions %}
-  <a href="/equipment" class="btn">← Geri</a>
+  <a href="/equipment" class="btn">← Back</a>
   {% if session.role == 'admin' %}
-    <a href="/equipment/edit/{{ equipment.equipment_id }}" class="btn">Düzenle</a>
-    <a href="/maintenance/new?equipment_id={{ equipment.equipment_id }}" class="btn btn-primary">+ Bakım kaydı</a>
+    <a href="/equipment/edit/{{ equipment.equipment_id }}" class="btn">Edit</a>
+    <a href="/maintenance/new?equipment_id={{ equipment.equipment_id }}" class="btn btn-primary">+ Maintenance Record</a>
   {% endif %}
 {% endblock %}
 
 {% block content %}
 <div class="grid-2 mb-16">
 
-  <!-- Ekipman bilgileri -->
+  <!-- Equipment details -->
   <div class="card">
-    <div class="card-title">Ekipman bilgileri</div>
+    <div class="card-title">Equipment Details</div>
     <table style="width:100%;font-size:12px;">
       <tr>
         <td style="color:var(--text3);padding:7px 0;width:45%;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">ID</td>
         <td style="color:var(--text);padding:7px 0;font-family:var(--mono);">{{ equipment.equipment_id }}</td>
       </tr>
       <tr>
-        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Tür</td>
+        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Type</td>
         <td style="color:var(--text);padding:7px 0;">{{ equipment.type }}</td>
       </tr>
       <tr>
-        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Seri no</td>
+        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Serial No</td>
         <td style="color:var(--text);padding:7px 0;font-family:var(--mono);">{{ equipment.serial_number or '—' }}</td>
       </tr>
       <tr>
-        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Satın alma tarihi</td>
+        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Purchase Date</td>
         <td style="color:var(--text);padding:7px 0;font-family:var(--mono);">{{ equipment.purchase_date or '—' }}</td>
       </tr>
       {% if session.role == 'admin' %}
       <tr>
-        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Satın alma maliyeti</td>
+        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Purchase Cost</td>
         <td style="color:var(--text);padding:7px 0;">₺{{ "{:,.2f}".format(equipment.purchase_cost) if equipment.purchase_cost else '—' }}</td>
       </tr>
       {% endif %}
       <tr>
-        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Durum</td>
+        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Status</td>
         <td style="padding:7px 0;">
           {% if equipment.status == 'Active' %}
-            <span class="badge badge-ok">Aktif</span>
+            <span class="badge badge-ok">Active</span>
           {% elif equipment.status == 'Maintenance' %}
-            <span class="badge badge-warn">Bakımda</span>
+            <span class="badge badge-warn">In Maintenance</span>
           {% else %}
-            <span class="badge badge-err">Arıza</span>
+            <span class="badge badge-err">Broken</span>
           {% endif %}
         </td>
       </tr>
       {% if equipment.notes %}
       <tr>
-        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Notlar</td>
+        <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Notes</td>
         <td style="color:var(--text2);padding:7px 0;">{{ equipment.notes }}</td>
       </tr>
       {% endif %}
     </table>
   </div>
 
-  <!-- Özet istatistikler -->
+  <!-- Summary statistics -->
   <div style="display:flex;flex-direction:column;gap:12px;">
     <div class="stat-card">
-      <div class="stat-label">Toplam bakım sayısı</div>
+      <div class="stat-label">Total Maintenance Count</div>
       <div class="stat-val">{{ maint_count }}</div>
     </div>
     {% if session.role == 'admin' %}
     <div class="stat-card">
-      <div class="stat-label">Toplam bakım maliyeti</div>
+      <div class="stat-label">Total Maintenance Cost</div>
       <div class="stat-val">₺{{ "{:,.0f}".format(total_cost) }}</div>
     </div>
     {% endif %}
     <div class="stat-card">
-      <div class="stat-label">Son bakım tarihi</div>
+      <div class="stat-label">Last Maintenance Date</div>
       <div class="stat-val" style="font-size:16px;font-family:var(--mono);">{{ last_maint or '—' }}</div>
     </div>
   </div>
 
 </div>
 
-<!-- Bakım geçmişi -->
+<!-- Maintenance history -->
 <div class="card">
   <div class="card-title">
-    Bakım geçmişi
+    Maintenance History
     {% if session.role == 'admin' %}
-      <a href="/maintenance/new?equipment_id={{ equipment.equipment_id }}" class="btn btn-sm btn-primary">+ Yeni bakım</a>
+      <a href="/maintenance/new?equipment_id={{ equipment.equipment_id }}" class="btn btn-sm btn-primary">+ New Maintenance</a>
     {% endif %}
   </div>
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>Tarih</th>
-          <th>Açıklama</th>
-          <th>Operatör</th>
-          {% if session.role == 'admin' %}<th>Maliyet</th>{% endif %}
-          <th>Durum</th>
-          <th>İşlemler</th>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Operator</th>
+          {% if session.role == 'admin' %}<th>Cost</th>{% endif %}
+          <th>Status</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for m in maintenance_history %}
         <tr>
-          <td class="text-mono text-dim" style="font-size:11px;">{{ m.maintenance_date }}</td>
+          <td class="text-mono text-dim" style="font-size:11px;">{{ m.date_from }}</td>
           <td class="text-muted">{{ m.description | truncate(40) }}</td>
           <td class="text-muted">{{ m.operator_name or '—' }}</td>
           {% if session.role == 'admin' %}
@@ -112,21 +112,21 @@
           {% endif %}
           <td>
             {% if m.status == 'Completed' %}
-              <span class="badge badge-ok">Tamamlandı</span>
+              <span class="badge badge-ok">Completed</span>
             {% elif m.status == 'In Progress' %}
-              <span class="badge badge-warn">Devam ediyor</span>
+              <span class="badge badge-warn">In Progress</span>
             {% elif m.status == 'Pending' %}
-              <span class="badge badge-info">Bekliyor</span>
+              <span class="badge badge-info">Pending</span>
             {% else %}
-              <span class="badge badge-err">Arıza</span>
+              <span class="badge badge-err">Cancelled</span>
             {% endif %}
           </td>
           <td>
-            <a href="/maintenance/{{ m.maintenance_id }}" class="btn btn-sm">Detay</a>
+            <a href="/maintenance/edit/{{ m.maintenance_id }}" class="btn btn-sm">Detail</a>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3);">Bakım kaydı bulunmuyor.</td></tr>
+        <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3);">No maintenance records found.</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -3,6 +3,8 @@ import math
 from flask import Flask, render_template, session, request, redirect, url_for
 import psycopg2.extras
 
+
+
 app = Flask(__name__)
 app.secret_key = '823607-Buse'
 
@@ -16,7 +18,7 @@ def connect_db():
     return conn
 
 
-@app.route("/")
+@app.route("/dashboard")
 def dashboard():
     conn = connect_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -111,15 +113,19 @@ def signup_post():
     exists = cur.fetchone()
     if exists:
         print("User already exists")
-        return redirect(url_for('home'))
+        cur.close()
+        conn.close()
+        return redirect(url_for('dashboard'))
     else:
         cur.execute("INSERT INTO users (user_name, user_surname, user_password, user_role, email) VALUES (%s, %s, %s, %s, %s)",
                     (name, surname, password, role, email))
         conn.commit()
         cur.close()
         conn.close()
-        return redirect(url_for('home'))
-
+        return redirect(url_for('dashboard'))
+@app.route('/', methods=['GET'])
+def login():
+    return render_template("home.html")
 @app.route("/login", methods=["POST"])
 def login_form():
     email = request.form["email"]
@@ -137,26 +143,28 @@ def login_form():
         cur.close()
         conn.close()
 
-        return redirect(url_for('home'))
+        return redirect(url_for('dashboard'))
     else:
         cur.close()
         conn.close()
-        return redirect(url_for('home'))
+        return redirect(url_for('dashboard'))
 
 @app.route("/logout")
 def logout():
     session.pop("email", None)
     session.pop("logged_in", None)
     session.clear()
-    return redirect(url_for('home'))
+    return redirect(url_for('login'))
 
 @app.route("/equipment", methods=["GET"])
 def equipment():
     conn = connect_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    q= request.args.get("q" , "")
+    q = request.args.get("q", "")
     status = request.args.get("status", "")
     type_ = request.args.get("type", "")
+    page = int(request.args.get("page", 1))
+    offset = (page - 1) * 10
 
     query = "SELECT * FROM equipments WHERE 1=1"
 
@@ -165,25 +173,38 @@ def equipment():
         query += " AND equipment_name ILIKE %s"
         params.append(f"%{q}%")
     if status:
-        query += " AND status = %s::maintenance_status"
+        query += " AND status = %s::equipment_status"
         params.append(status)
     if type_:
         query += " AND type = %s"
         params.append(type_)
 
+
+    count_query = "SELECT COUNT(*) AS cnt FROM (" + query + ") AS sub"
+    cur.execute(count_query, params)
+    total_count = cur.fetchone()["cnt"]
+    pages = math.ceil(total_count / 10) if total_count else 1
+
+
+    query += " ORDER BY equipment_id DESC LIMIT 10 OFFSET %s"
+    params.append(offset)
+
     cur.execute(query, params)
     items = cur.fetchall()
-    total_count = len(items)
-    pages = math.ceil(total_count / 10)
+    cur.close()
+    conn.close()
+
     equipment_types = ['Agriculture', 'Harvesting', 'Irrigation', 'Pest Control', 'Transportation', 'Other']
 
-    return render_template("equipment_list.html" , equipment=items , total=total_count,
-                           total_pages=pages, current_page=1, equipment_types=equipment_types)
+    return render_template("equipment_list.html", equipment=items, total=total_count,
+                           total_pages=pages, current_page=page, equipment_types=equipment_types)
 
 @app.route("/equipment/new", methods=["GET"])
 def equipment_new():
     if session.get("logged_in"):
         return render_template("equipment_form.html")
+    else:
+        return redirect(url_for('login'))
 
 @app.route("/equipment/new", methods=["POST"])
 def equipment_new_post():
@@ -203,6 +224,8 @@ def equipment_new_post():
         cur.close()
         conn.close()
         return redirect(url_for('equipment'))
+    else:
+        return redirect(url_for('login'))
 
 @app.route("/equipment/edit/<int:equipment_id>", methods=["GET", "POST"])
 def equipment_edit(equipment_id):
@@ -232,6 +255,8 @@ def equipment_edit(equipment_id):
             conn.close()
 
             return render_template('equipment_form.html', equipment=equipment)
+    else:
+        return redirect(url_for('login'))
 
 @app.route("/equipment/delete/<int:equipment_id>", methods=["POST"])
 def equipment_delete(equipment_id):
@@ -286,6 +311,8 @@ def maintenance():
     status = request.args.get("status", "")
     date_from = request.args.get("date_from", "")
     date_to = request.args.get("date_to", "")
+    page = int(request.args.get("page", 1))
+    offset = (page - 1) * 10
 
     query = """
         SELECT m.*, e.equipment_name 
@@ -308,14 +335,23 @@ def maintenance():
         query += " AND m.date_to <= %s::date"
         params.append(date_to)
 
+
+    count_query = "SELECT COUNT(*) AS cnt FROM (" + query + ") AS sub"
+    cur.execute(count_query, params)
+    total_count = cur.fetchone()["cnt"]
+    pages = math.ceil(total_count / 10) if total_count else 1
+
+
+    query += " ORDER BY m.date_from DESC LIMIT 10 OFFSET %s"
+    params.append(offset)
+
     cur.execute(query, params)
     items = cur.fetchall()
-    total_count = len(items)
-    pages = math.ceil(total_count / 10)
-
+    cur.close()
+    conn.close()
 
     return render_template("maintenance_list.html", maintenance=items, total=total_count,
-                           total_pages=pages, current_page=1)
+                           total_pages=pages, current_page=page)
 
 @app.route("/maintenance/new", methods=["GET"])
 def maintenance_new():
@@ -323,6 +359,8 @@ def maintenance_new():
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("SELECT equipment_id , equipment_name, type FROM equipments ORDER BY equipment_id DESC")
     equipments = cur.fetchall()
+    cur.close()
+    conn.close()
     return render_template("maintenance_form.html" , equipments=equipments)
 @app.route("/maintenance/new", methods=["POST"])
 def maintenance_new_form():
@@ -389,126 +427,162 @@ def components():
     cur.execute("SELECT * FROM components ORDER BY component_id DESC")
     components = cur.fetchall()
     cur.close()
+    conn.close()
     return render_template("component.html" , components=components)
 
 @app.route("/components/new", methods=["GET"])
 def component_new():
-    return render_template("component_form.html")
+    if session.get("role") == 'admin':
+        return render_template("component_form.html")
+    else:
+        return redirect(url_for('login'))
 
 @app.route("/components/new", methods=["POST"])
 def component_new_form():
-    conn = connect_db()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    component_name = request.form["component_name"]
-    category=request.form["category"] or None
-    unit_price = request.form["unit_price"] or None
-    stock_quantity = request.form["stock_quantity"] or None
-    notes = request.form["notes"] or None
-    cur.execute("INSERT INTO components (component_name, category, unit_price, stock_quantity, notes)" 
-                "VALUES (%s, %s, %s, %s, %s)", (component_name, category, unit_price, stock_quantity, notes))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return redirect(url_for('components'))
-
-@app.route("/components/edit/<int:component_id>", methods=["GET","POST"])
-def component_edit(component_id):
-    conn = connect_db()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    if request.method == "POST":
+    if session.get("role") == 'admin':
+        conn = connect_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         component_name = request.form["component_name"]
-        category = request.form["category"] or None
+        category=request.form["category"] or None
         unit_price = request.form["unit_price"] or None
         stock_quantity = request.form["stock_quantity"] or None
         notes = request.form["notes"] or None
-        cur.execute("UPDATE components SET component_name = %s, category = %s, unit_price = %s, stock_quantity = %s, notes = %s WHERE component_id = %s",
-                    (component_name, category, unit_price, stock_quantity, notes, component_id))
+        cur.execute("INSERT INTO components (component_name, category, unit_price, stock_quantity, notes)" 
+                    "VALUES (%s, %s, %s, %s, %s)", (component_name, category, unit_price, stock_quantity, notes))
         conn.commit()
         cur.close()
         conn.close()
         return redirect(url_for('components'))
     else:
-        cur.execute("SELECT * FROM components WHERE component_id = %s", (component_id,))
-        component = cur.fetchone()
-        return render_template("component_form.html", component=component)
+        return redirect(url_for('login'))
+
+@app.route("/components/edit/<int:component_id>", methods=["GET","POST"])
+def component_edit(component_id):
+    if session.get("role") == 'admin':
+        conn = connect_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        if request.method == "POST":
+            component_name = request.form["component_name"]
+            category = request.form["category"] or None
+            unit_price = request.form["unit_price"] or None
+            stock_quantity = request.form["stock_quantity"] or None
+            notes = request.form["notes"] or None
+            cur.execute("UPDATE components SET component_name = %s, category = %s, unit_price = %s, stock_quantity = %s, notes = %s WHERE component_id = %s",
+                    (component_name, category, unit_price, stock_quantity, notes, component_id))
+            conn.commit()
+            cur.close()
+            conn.close()
+            return redirect(url_for('components'))
+        else:
+            cur.execute("SELECT * FROM components WHERE component_id = %s", (component_id,))
+            component = cur.fetchone()
+            cur.close()
+            conn.close()
+            return render_template("component_form.html", component=component)
+    else:
+        return redirect(url_for('login'))
 
 @app.route("/components/delete/<int:component_id>", methods=["POST"])
 def component_delete(component_id):
-    conn = connect_db()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("DELETE FROM components WHERE component_id = %s", (component_id,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return redirect(url_for('component'))
+    if session.get("role") == 'admin':
+        conn = connect_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("DELETE FROM components WHERE component_id = %s", (component_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return redirect(url_for('components'))
+    else:
+        return redirect(url_for('login'))
 
 @app.route("/operators", methods=["GET"])
 def operators():
     conn = connect_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("SELECT * FROM operators ORDER BY operator_id DESC")
-    operators = cur.fetchall()
+    cur.execute("""
+        SELECT o.*, COUNT(m.maintenance_id) AS maintenance_count
+        FROM operators o
+        LEFT JOIN maintenance m ON o.operator_id = m.operator_id
+        GROUP BY o.operator_id
+        ORDER BY o.operator_id DESC
+    """)
+    all_operators = cur.fetchall()
+    total = len(all_operators)
     cur.close()
-    return render_template("operators_list.html" , operators=operators)
+    conn.close()
+    return render_template("operators_list.html", operators=all_operators, total=total)
 
 @app.route("/operators/new", methods=["GET"])
 def operators_new():
-    return render_template("operator_form.html")
+    if session.get("role") == 'admin':
+        return render_template("operator_form.html")
+    else:
+        return redirect(url_for('login'))
 
 @app.route("/operators/new", methods=["POST"])
 def operator_new_form():
-    conn = connect_db()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    operator_name = request.form["operator_name"]
-    certificate_no = request.form["certificate_no"] or None
-    certificate_type = request.form["certificate_type"] or None
-    hire_date = request.form["hire_date"] or None
-    phone= request.form["phone"] or None
-    email = request.form["email"] or None
-    cur.execute(
-        "INSERT INTO operators (operator_name, certificate_no, certificate_type, hire_date, phone, email)"
-                "VALUES(%s, %s, %s, %s, %s, %s)",
-        (operator_name, certificate_no, certificate_type, hire_date, phone, email))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return redirect(url_for('operators'))
-
-@app.route("/operators/edit/<int:operator_id>", methods=["GET","POST"])
-def operator_edit(operator_id):
-    conn = connect_db()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
-    if request.method == "POST":
+    if session.get("role") == 'admin':
+        conn = connect_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         operator_name = request.form["operator_name"]
-
         certificate_no = request.form["certificate_no"] or None
         certificate_type = request.form["certificate_type"] or None
         hire_date = request.form["hire_date"] or None
-        phone = request.form["phone"] or None
+        phone= request.form["phone"] or None
         email = request.form["email"] or None
-        cur.execute("UPDATE operators SET operator_name = %s , "
-                    "certificate_no = %s, certificate_type = %s, hire_date = %s, phone = %s, email = %s WHERE operator_id = %s",
-                    (operator_name, certificate_no, certificate_type, hire_date, phone, email, operator_id))
+        cur.execute(
+        "INSERT INTO operators (operator_name, certificate_no, certificate_type, hire_date, phone, email)"
+                "VALUES(%s, %s, %s, %s, %s, %s)",
+        (operator_name, certificate_no, certificate_type, hire_date, phone, email))
         conn.commit()
         cur.close()
         conn.close()
         return redirect(url_for('operators'))
     else:
-        cur.execute("SELECT * FROM operators WHERE operator_id = %s", (operator_id,))
-        operator = cur.fetchone()
-        return render_template("operator_form.html", operator=operator)
+        return redirect(url_for('login'))
+
+@app.route("/operators/edit/<int:operator_id>", methods=["GET","POST"])
+def operator_edit(operator_id):
+    if session.get("role") == 'admin':
+        conn = connect_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        if request.method == "POST":
+            operator_name = request.form["operator_name"]
+
+            certificate_no = request.form["certificate_no"] or None
+            certificate_type = request.form["certificate_type"] or None
+            hire_date = request.form["hire_date"] or None
+            phone = request.form["phone"] or None
+            email = request.form["email"] or None
+            cur.execute("UPDATE operators SET operator_name = %s , "
+                    "certificate_no = %s, certificate_type = %s, hire_date = %s, phone = %s, email = %s WHERE operator_id = %s",
+                    (operator_name, certificate_no, certificate_type, hire_date, phone, email, operator_id))
+            conn.commit()
+            cur.close()
+            conn.close()
+            return redirect(url_for('operators'))
+        else:
+            cur.execute("SELECT * FROM operators WHERE operator_id = %s", (operator_id,))
+            operator = cur.fetchone()
+            cur.close()
+            conn.close()
+            return render_template("operator_form.html", operator=operator)
+    else:
+        return redirect(url_for('login'))
 
 @app.route("/operators/delete/<int:operator_id>", methods=["POST"])
 def operator_delete(operator_id):
-    conn = connect_db()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    if request.method == "POST":
+    if session.get("role") == 'admin':
+        conn = connect_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("DELETE FROM operators WHERE operator_id = %s", (operator_id,))
         conn.commit()
         cur.close()
         conn.close()
         return redirect(url_for('operators'))
+    else:
+        return redirect(url_for('login'))
 
 
 

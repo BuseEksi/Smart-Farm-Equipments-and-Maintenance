@@ -2,11 +2,11 @@
 
 {% block title %}Dashboard{% endblock %}
 {% block topbar_title %}Dashboard{% endblock %}
-{% block topbar_sub %}Çiftlik ekipman durumuna genel bakış{% endblock %}
+{% block topbar_sub %}Overview of farm equipment status{% endblock %}
 {% block topbar_actions %}
   {% if session.role == 'admin' %}
-    <a href="/equipment/new" class="btn btn-primary">+ Ekipman ekle</a>
-    <a href="/maintenance/new" class="btn">+ Bakım kaydı</a>
+    <a href="/equipment/new" class="btn btn-primary">+ Add Equipment</a>
+    <a href="/maintenance/new" class="btn">+ Maintenance Record</a>
   {% endif %}
 {% endblock %}
 
@@ -15,53 +15,53 @@
 <!-- Stat cards -->
 <div class="stat-grid mb-24">
   <div class="stat-card">
-    <div class="stat-label">Toplam ekipman</div>
+    <div class="stat-label">Total Equipment</div>
     <div class="stat-val">{{ stats.total_equipment }}</div>
-    <div class="stat-change up">↑ {{ stats.new_this_month }} bu ay eklendi</div>
+    <div class="stat-change up">↑ {{ stats.new_this_month }} added this month</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Aktif bakım</div>
+    <div class="stat-label">Active Maintenance</div>
     <div class="stat-val">{{ stats.active_maintenance }}</div>
-    <div class="stat-change warn">{{ stats.upcoming }} yaklaşan bakım</div>
+    <div class="stat-change warn">{{ stats.upcoming }} upcoming maintenance</div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Arıza durumu</div>
+    <div class="stat-label">Broken Equipment</div>
     <div class="stat-val">{{ stats.broken }}</div>
-    <div class="stat-change down">{{ stats.broken_week }} bu hafta arıza</div>
+    <div class="stat-change down">{{ stats.broken_week }} broken this week</div>
   </div>
   {% if session.role == 'admin' %}
   <div class="stat-card">
-    <div class="stat-label">Bu ay bakım maliyeti</div>
+    <div class="stat-label">Maintenance Cost This Month</div>
     <div class="stat-val">₺{{ "{:,.0f}".format(stats.monthly_cost) }}</div>
     <div class="stat-change {{ 'up' if stats.budget_ok else 'down' }}">
-      {{ 'Bütçe dahilinde' if stats.budget_ok else 'Bütçe aşıldı' }}
+      {{ 'Within Budget' if stats.budget_ok else 'Budget Exceeded' }}
     </div>
   </div>
   {% else %}
   <div class="stat-card">
-    <div class="stat-label">Atanan bakımlarım</div>
+    <div class="stat-label">My Assigned Tasks</div>
     <div class="stat-val">{{ stats.my_tasks }}</div>
-    <div class="stat-change warn">{{ stats.my_pending }} bekliyor</div>
+    <div class="stat-change warn">{{ stats.my_pending }} pending</div>
   </div>
   {% endif %}
 </div>
 
 <div class="grid-2 mb-16">
 
-  <!-- Son bakım kayıtları -->
+  <!-- Recent maintenance records -->
   <div class="card">
     <div class="card-title">
-      Son bakım kayıtları
-      <a href="/maintenance" class="btn btn-sm">Tümü →</a>
+      Recent Maintenance Records
+      <a href="/maintenance" class="btn btn-sm">All →</a>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Ekipman</th>
-            <th>İşlem</th>
-            <th>Tarih</th>
-            <th>Durum</th>
+            <th>Equipment</th>
+            <th>Description</th>
+            <th>Date</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -75,14 +75,14 @@
             <td class="text-muted">{{ m.description | truncate(28) }}</td>
             <td class="text-mono text-dim">{{ m.maintenance_date }}</td>
             <td>
-              {% if m.status == 'completed' %}
-                <span class="badge badge-ok">Tamamlandı</span>
-              {% elif m.status == 'in_progress' %}
-                <span class="badge badge-warn">Devam ediyor</span>
-              {% elif m.status == 'pending' %}
-                <span class="badge badge-info">Bekliyor</span>
+              {% if m.status == 'Completed' %}
+                <span class="badge badge-ok">Completed</span>
+              {% elif m.status == 'In Progress' %}
+                <span class="badge badge-warn">In Progress</span>
+              {% elif m.status == 'Pending' %}
+                <span class="badge badge-info">Pending</span>
               {% else %}
-                <span class="badge badge-err">Arıza</span>
+                <span class="badge badge-err">Cancelled</span>
               {% endif %}
             </td>
           </tr>
@@ -92,20 +92,20 @@
     </div>
   </div>
 
-  <!-- Ekipman özet tablosu -->
+  <!-- Equipment summary table -->
   <div class="card">
     <div class="card-title">
-      Ekipman durumu
-      <a href="/equipment" class="btn btn-sm">Tümü →</a>
+      Equipment Status
+      <a href="/equipment" class="btn btn-sm">All →</a>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Ad</th>
-            <th>Tür</th>
-            <th>Son bakım</th>
-            <th>Durum</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Last Maintenance</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -116,15 +116,15 @@
                 {{ e.equipment_name }}
               </a>
             </td>
-            <td class="text-muted">{{ e.equipment_type }}</td>
+            <td class="text-muted">{{ e.type }}</td>
             <td class="text-mono text-dim">{{ e.last_maintenance or '—' }}</td>
             <td>
-              {% if e.status == 'active' %}
-                <span class="badge badge-ok">Aktif</span>
-              {% elif e.status == 'maintenance' %}
-                <span class="badge badge-warn">Bakımda</span>
+              {% if e.status == 'Active' %}
+                <span class="badge badge-ok">Active</span>
+              {% elif e.status == 'Maintenance' %}
+                <span class="badge badge-warn">In Maintenance</span>
               {% else %}
-                <span class="badge badge-err">Arıza</span>
+                <span class="badge badge-err">Broken</span>
               {% endif %}
             </td>
           </tr>
@@ -136,17 +136,17 @@
 
 </div>
 
-<!-- Gelişmiş sorgular kısmı -->
+<!-- Advanced queries section -->
 <div class="card">
-  <div class="card-title">Gelişmiş sorgular</div>
+  <div class="card-title">Advanced Queries</div>
   <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
     {% set queries = [
-      ('Q1', 'En çok bakım yapılan ekipmanlar', '/queries/1'),
-      ('Q2', 'Operatör başına bakım sayısı',     '/queries/2'),
-      ('Q3', 'En yüksek maliyetli bakımlar',     '/queries/3'),
-      ('Q4', 'En çok kullanılan bileşenler',     '/queries/4'),
-      ('Q5', 'Aylık bakım maliyet trendi',       '/queries/5'),
-      ('Q6', 'Ekipman türüne göre ort. bakım süresi', '/queries/6'),
+      ('Q1', 'Most Maintained Equipment',           '/queries/1'),
+      ('Q2', 'Maintenance Count per Operator',      '/queries/2'),
+      ('Q3', 'Highest Cost Maintenance Records',    '/queries/3'),
+      ('Q4', 'Most Used Components',                '/queries/4'),
+      ('Q5', 'Monthly Maintenance Cost Trend',      '/queries/5'),
+      ('Q6', 'Avg. Maintenance Duration by Type',   '/queries/6'),
     ] %}
     {% for num, label, url in queries %}
     <a href="{{ url }}" style="

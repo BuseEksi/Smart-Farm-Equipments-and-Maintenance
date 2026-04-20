@@ -1,10 +1,10 @@
 {% extends "home.html" %}
 
-{% block title %}{{ 'Bakım Kaydı Düzenle' if maintenance else 'Yeni Bakım Kaydı' }}{% endblock %}
-{% block topbar_title %}{{ 'Bakım Kaydı Düzenle' if maintenance else 'Yeni Bakım Kaydı' }}{% endblock %}
-{% block topbar_sub %}{{ maintenance.maintenance_id if maintenance else 'Yeni bakım işlemi oluştur' }}{% endblock %}
+{% block title %}{{ 'Edit Maintenance Record' if maintenance else 'New Maintenance Record' }}{% endblock %}
+{% block topbar_title %}{{ 'Edit Maintenance Record' if maintenance else 'New Maintenance Record' }}{% endblock %}
+{% block topbar_sub %}{{ maintenance.maintenance_id if maintenance else 'Create new maintenance record' }}{% endblock %}
 {% block topbar_actions %}
-  <a href="/maintenance" class="btn">← Geri</a>
+  <a href="/maintenance" class="btn">← Back</a>
 {% endblock %}
 
 {% block content %}
@@ -14,9 +14,9 @@
           action="{{ '/maintenance/edit/' + maintenance.maintenance_id|string if maintenance else '/maintenance/new' }}">
 
       <div class="form-group">
-        <label for="equipment_id">Ekipman *</label>
+        <label for="equipment_id">Equipment *</label>
         <select id="equipment_id" name="equipment_id" required>
-          <option value="">Ekipman seçiniz...</option>
+          <option value="">Select equipment...</option>
           {% for e in equipments %}
             <option value="{{ e.equipment_id }}"
               {{ 'selected' if (maintenance and maintenance.equipment_id == e.equipment_id)
@@ -28,23 +28,23 @@
       </div>
 
       <div class="form-group">
-        <label for="description">Açıklama *</label>
+        <label for="description">Description *</label>
         <textarea id="description" name="description" rows="3" required
                   style="resize:vertical;">{{ maintenance.description if maintenance else '' }}</textarea>
       </div>
 
       <div class="grid-2">
         <div class="form-group">
-          <label for="maintanence_date">Bakım tarihi *</label>
+          <label for="date_from">Maintenance Date *</label>
           <input type="date" id="date_from" name="date_from"
                  value="{{ maintenance.date_from if maintenance else '' }}" required>
         </div>
         <div class="form-group">
-          <label for="status">Durum *</label>
+          <label for="status">Status *</label>
           <select id="status" name="status" required>
-            <option value="Pending"     {{ 'selected' if maintenance and maintenance.status == 'Pending' }}>Bekliyor</option>
-            <option value="In Progress" {{ 'selected' if maintenance and maintenance.status == 'In Progress' }}>Devam ediyor</option>
-            <option value="Completed"   {{ 'selected' if maintenance and maintenance.status == 'Completed' }}>Tamamlandı</option>
+            <option value="Pending"     {{ 'selected' if maintenance and maintenance.status == 'Pending' }}>Pending</option>
+            <option value="In Progress" {{ 'selected' if maintenance and maintenance.status == 'In Progress' }}>In Progress</option>
+            <option value="Completed"   {{ 'selected' if maintenance and maintenance.status == 'Completed' }}>Completed</option>
           </select>
         </div>
       </div>
@@ -52,32 +52,30 @@
       {% if session.role == 'admin' %}
       <div class="grid-2">
         <div class="form-group">
-          <label for="operator_id">Operatör</label>
+          <label for="operator_id">Operator</label>
           <select id="operator_id" name="operator_id">
-            <option value="">Atanmadı</option>
+            <option value="">Not Assigned</option>
             {% for op in operators %}
               <option value="{{ op.operator_id }}"
                 {{ 'selected' if maintenance and maintenance.operator_id == op.operator_id }}>
-                {{ op.first_name }} {{ op.last_name }}
+                {{ op.operator_name }}
               </option>
             {% endfor %}
           </select>
         </div>
         <div class="form-group">
-          <label for="cost">Maliyet (₺)</label>
+          <label for="cost">Cost (₺)</label>
           <input type="number" id="cost" name="cost" step="0.01" min="0"
                  value="{{ maintenance.cost if maintenance else '' }}">
         </div>
       </div>
       {% else %}
-      <!-- Teknisyen kendi kaydını güncelliyorsa sadece durum değiştirebilir -->
       <input type="hidden" name="operator_id" value="{{ session.user_id }}">
       {% endif %}
 
-      <!-- Bileşenler (admin only) -->
       {% if session.role == 'admin' and components %}
       <div class="form-group">
-        <label>Kullanılan bileşenler</label>
+        <label>Components Used</label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:180px;overflow-y:auto;
                     padding:10px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);">
           {% for c in components %}
@@ -94,15 +92,15 @@
       {% endif %}
 
       <div class="form-group">
-        <label for="notes">Notlar</label>
+        <label for="notes">Notes</label>
         <textarea id="notes" name="notes" rows="2"
                   style="resize:vertical;">{{ maintenance.notes if maintenance else '' }}</textarea>
       </div>
 
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
-        <a href="/maintenance" class="btn">İptal</a>
+        <a href="/maintenance" class="btn">Cancel</a>
         <button type="submit" class="btn btn-primary">
-          {{ 'Değişiklikleri kaydet' if maintenance else 'Bakım kaydını oluştur' }}
+          {{ 'Save Changes' if maintenance else 'Create Maintenance Record' }}
         </button>
       </div>
     </form>

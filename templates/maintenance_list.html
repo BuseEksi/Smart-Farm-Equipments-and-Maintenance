@@ -1,32 +1,32 @@
 {% extends "home.html" %}
 
-{% block title %}Bakım Kayıtları{% endblock %}
-{% block topbar_title %}Bakım Kayıtları{% endblock %}
-{% block topbar_sub %}{{ total }} kayıt{% endblock %}
+{% block title %}Maintenance Records{% endblock %}
+{% block topbar_title %}Maintenance Records{% endblock %}
+{% block topbar_sub %}{{ total }} records{% endblock %}
 {% block topbar_actions %}
   {% if session.role == 'admin' %}
-    <a href="/maintenance/new" class="btn btn-primary">+ Yeni bakım kaydı</a>
+    <a href="/maintenance/new" class="btn btn-primary">+ New Maintenance Record</a>
   {% endif %}
 {% endblock %}
 
 {% block content %}
 
-<!-- Filtreler -->
+<!-- Filters -->
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
   <form method="GET" action="/maintenance" style="display:flex;gap:8px;flex-wrap:wrap;">
     <input type="text" name="q" value="{{ request.args.get('q','') }}"
-           placeholder="Ekipman veya açıklama ara..." style="max-width:220px;">
+           placeholder="Search equipment or description..." style="max-width:220px;">
     <select name="status" style="max-width:140px;">
-      <option value="">Tüm durumlar</option>
-      <option value="Pending"     {{ 'selected' if request.args.get('status')=='Pending' }}>Bekliyor</option>
-      <option value="In Progress" {{ 'selected' if request.args.get('status')=='In Progress' }}>Devam ediyor</option>
-      <option value="Completed"   {{ 'selected' if request.args.get('status')=='Completed' }}>Tamamlandı</option>
+      <option value="">All Statuses</option>
+      <option value="Pending"     {{ 'selected' if request.args.get('status')=='Pending' }}>Pending</option>
+      <option value="In Progress" {{ 'selected' if request.args.get('status')=='In Progress' }}>In Progress</option>
+      <option value="Completed"   {{ 'selected' if request.args.get('status')=='Completed' }}>Completed</option>
     </select>
     <input type="date" name="date_from" value="{{ request.args.get('date_from','') }}"
-           style="max-width:140px;" title="Başlangıç tarihi">
+           style="max-width:140px;" title="Start date">
     <input type="date" name="date_to" value="{{ request.args.get('date_to','') }}"
-           style="max-width:140px;" title="Bitiş tarihi">
-    <button type="submit" class="btn">Filtrele</button>
+           style="max-width:140px;" title="End date">
+    <button type="submit" class="btn">Filter</button>
     <a href="/maintenance" class="btn">✕</a>
   </form>
 </div>
@@ -37,13 +37,13 @@
       <thead>
         <tr>
           <th>ID</th>
-          <th>Ekipman</th>
-          <th>Açıklama</th>
-          <th>Operatör</th>
-          <th>Tarih</th>
-          {% if session.role == 'admin' %}<th>Maliyet</th>{% endif %}
-          <th>Durum</th>
-          <th>İşlemler</th>
+          <th>Equipment</th>
+          <th>Description</th>
+          <th>Operator</th>
+          <th>Date</th>
+          {% if session.role == 'admin' %}<th>Cost</th>{% endif %}
+          <th>Status</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -63,33 +63,33 @@
           {% endif %}
           <td>
             {% if m.status == 'Completed' %}
-              <span class="badge badge-ok">Tamamlandı</span>
+              <span class="badge badge-ok">Completed</span>
             {% elif m.status == 'In Progress' %}
-              <span class="badge badge-warn">Devam ediyor</span>
+              <span class="badge badge-warn">In Progress</span>
             {% elif m.status == 'Pending' %}
-              <span class="badge badge-info">Bekliyor</span>
+              <span class="badge badge-info">Pending</span>
             {% else %}
-              <span class="badge badge-err">Arıza</span>
+              <span class="badge badge-err">Cancelled</span>
             {% endif %}
           </td>
           <td>
             <div style="display:flex;gap:5px;">
-              <a href="/maintenance/{{ m.maintenance_id }}" class="btn btn-sm">Detay</a>
+              <a href="/maintenance/{{ m.maintenance_id }}" class="btn btn-sm">Detail</a>
               {% if session.role == 'admin' or (session.role == 'tech' and m.operator_id == session.user_id) %}
-                <a href="/maintenance/edit/{{ m.maintenance_id }}" class="btn btn-sm">Düzenle</a>
+                <a href="/maintenance/edit/{{ m.maintenance_id }}" class="btn btn-sm">Edit</a>
               {% endif %}
               {% if session.role == 'admin' %}
                 <form method="POST" action="/maintenance/delete/{{ m.maintenance_id }}"
-                      onsubmit="return confirm('Bu bakım kaydını silmek istediğinize emin misiniz?');"
+                      onsubmit="return confirm('Are you sure you want to delete this maintenance record?');"
                       style="display:inline;">
-                  <button type="submit" class="btn btn-sm btn-danger">Sil</button>
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
                 </form>
               {% endif %}
             </div>
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">Kayıt bulunamadı.</td></tr>
+        <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);">No records found.</td></tr>
         {% endfor %}
       </tbody>
     </table>

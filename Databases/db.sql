@@ -182,7 +182,7 @@ ALTER TABLE operators
 ADD COLUMN phone INT;
 
 ALTER TABLE operators
-ADD COLUMN email VARCHAR(50) NOT NULL DEFAULT 'no-reply@example.com';
+ADD COLUMN email VARCHAR(50) DEFAULT 'no-reply@example.com';
 
 ALTER TABLE operators
 RENAME COLUMN op_id TO operator_id;
@@ -198,3 +198,52 @@ ADD COLUMN phone VARCHAR(11);
 
 ALTER TABLE equipments ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
 ALTER TABLE equipments ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
+
+
+ALTER TABLE operators ALTER COLUMN phone TYPE VARCHAR(15);
+
+ALTER TABLE operators
+DROP COLUMN email;
+
+SELECT column_name, character_maximum_length
+FROM information_schema.columns
+WHERE table_name = 'equipments'
+AND data_type = 'character varying';
+
+
+
+
+ALTER TABLE equipments
+  ALTER COLUMN equipment_name TYPE VARCHAR(100),
+  ALTER COLUMN type TYPE VARCHAR(50),
+  ALTER COLUMN brand TYPE VARCHAR(50),
+  ALTER COLUMN model TYPE VARCHAR(30),
+  ALTER COLUMN serial_number TYPE VARCHAR(30);
+
+
+
+SELECT unnest(enum_range(NULL::equipment_status));
+
+ALTER TYPE equipment_status ADD VALUE 'In Service';
+
+ALTER TABLE users ADD CONSTRAINT users_email_unique UNIQUE (email);
+
+TRUNCATE TABLE maintenance_component CASCADE;
+TRUNCATE TABLE maintenance CASCADE;
+TRUNCATE TABLE equipments CASCADE;
+TRUNCATE TABLE operators CASCADE;
+TRUNCATE TABLE components CASCADE;
+TRUNCATE TABLE users CASCADE;
+
+
+SELECT 'equipments' AS tablo, COUNT(*) FROM equipments
+UNION ALL
+SELECT 'maintenance', COUNT(*) FROM maintenance
+UNION ALL
+SELECT 'operators', COUNT(*) FROM operators
+UNION ALL
+SELECT 'components', COUNT(*) FROM components
+UNION ALL
+SELECT 'maintenance_component', COUNT(*) FROM maintenance_component
+UNION ALL
+SELECT 'users', COUNT(*) FROM users;
