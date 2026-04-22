@@ -1,0 +1,126 @@
+{% extends "home.html" %}
+
+{% block title %}Maintenance #{{ maintenance.maintenance_id }}{% endblock %}
+{% block topbar_title %}Maintenance Detail{% endblock %}
+
+{% block topbar_actions %}
+  <a href="/maintenance" class="btn">← Back</a>
+  {% if session.role == 'admin' %}
+    <a href="/maintenance/edit/{{ maintenance.maintenance_id }}" class="btn btn-primary">Edit Record</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="grid-2 mb-16">
+
+  <div class="card">
+    <div class="card-title">
+        Service Information
+        {% if maintenance.status == 'Completed' %}
+          <span class="badge badge-ok">Completed</span>
+        {% elif maintenance.status == 'In Progress' %}
+          <span class="badge badge-warn">In Progress</span>
+        {% else %}
+          <span class="badge badge-info">{{ maintenance.status }}</span>
+        {% endif %}
+    </div>
+
+    <table style="width:100%; font-size:12px;">
+      <tr>
+        <td style="color:var(--text3); padding:8px 0; width:40%; font-family:var(--mono); font-size:10px; text-transform:uppercase;">Record ID</td>
+        <td style="color:var(--text); font-family:var(--mono);">#{{ maintenance.maintenance_id }}</td>
+      </tr>
+      <tr>
+        <td style="color:var(--text3); padding:8px 0; font-family:var(--mono); font-size:10px; text-transform:uppercase;">Date From</td>
+        <td style="color:var(--text);">{{ maintenance.date_from }}</td>
+      </tr>
+      <tr>
+        <td style="color:var(--text3); padding:8px 0; font-family:var(--mono); font-size:10px; text-transform:uppercase;">Date To</td>
+        <td style="color:var(--text);">{{ maintenance.date_to or 'Ongoing' }}</td>
+      </tr>
+      <tr>
+        <td style="color:var(--text3); padding:8px 0; font-family:var(--mono); font-size:10px; text-transform:uppercase;">Description</td>
+        <td style="color:var(--text2); line-height:1.4;">{{ maintenance.description }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:16px;">
+
+    <div class="stat-card" style="padding:15px; border:1px solid var(--border);">
+      <div class="stat-label">Equipment</div>
+      <div style="margin-top:8px;">
+        <a href="/equipment/{{ maintenance.equipment_id }}" style="text-decoration:none; color:var(--purple2); font-weight:600;">
+            {{ maintenance.brand }} {{ maintenance.equipment_name }}
+        </a>
+        <div style="font-size:11px; color:var(--text3); margin-top:4px; font-family:var(--mono);">
+            S/N: {{ maintenance.serial_number or 'N/A' }} | Type: {{ maintenance.equipment_type }}
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-card" style="padding:15px; border:1px solid var(--border);">
+      <div class="stat-label">Assigned Operator</div>
+      <div style="margin-top:8px;">
+        <div style="color:var(--text); font-weight:500;">{{ maintenance.operator_name or 'Unassigned' }}</div>
+        {% if maintenance.certificate_no %}
+          <div style="font-size:11px; color:var(--text3); font-family:var(--mono);">Cert: {{ maintenance.certificate_no }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Used Components & Parts</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Component Name</th>
+          <th>Category</th>
+          <th>Quantity</th>
+          {% if session.role == 'admin' %}
+            <th>Unit Price</th>
+            <th>Subtotal</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for comp in components %}
+        <tr>
+          <td>{{ comp.component_name }}</td>
+          <td class="text-muted">{{ comp.category }}</td>
+          <td class="text-mono">{{ comp.quantity }}</td>
+          {% if session.role == 'admin' %}
+            <td class="text-dim">₺{{ "{:,.2f}".format(comp.unit_price) }}</td>
+            <td class="text-mono">₺{{ "{:,.2f}".format(comp.total_price) }}</td>
+          {% endif %}
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="5" style="text-align:center; padding:30px; color:var(--text3);">No components were recorded for this maintenance.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% if session.role == 'admin' and maintenance.cost %}
+      <tfoot>
+        <tr style="border-top: 2px solid var(--border);">
+            <td colspan="4" style="text-align:right; font-weight:600; padding:15px;">Total Maintenance Cost:</td>
+            <td style="font-size:16px; font-weight:700; color:var(--purple2);">₺{{ "{:,.2f}".format(maintenance.cost) }}</td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+
+{% if maintenance.notes %}
+<div class="card" style="margin-top:16px; border-left:4px solid var(--purple2);">
+    <div class="card-title" style="font-size:11px; text-transform:uppercase; letter-spacing:1px;">Technical Notes</div>
+    <div style="color:var(--text2); font-size:13px; line-height:1.6; white-space: pre-wrap;">{{ maintenance.notes }}</div>
+</div>
+{% endif %}
+
+{% endblock %}

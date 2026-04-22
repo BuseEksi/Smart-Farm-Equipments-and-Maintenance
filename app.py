@@ -420,6 +420,46 @@ def maintenance_edit(maintenance_id):
         conn.close()
         return render_template("maintenance_form.html", maintenance=maintenance, equipments=equipments, operators=operators)
 
+
+@app.route("/maintenance/<int:maintenance_id>", methods=["GET"])
+def maintenance_detail(maintenance_id):
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+
+    cur.execute("""
+        SELECT m.*, 
+               e.equipment_name, e.model, e.brand, e.serial_number, e.type as equipment_type,
+               o.operator_name, o.certificate_no, o.phone as operator_phone
+        FROM maintenance m
+        JOIN equipments e ON m.equipment_id = e.equipment_id
+        LEFT JOIN operators o ON m.operator_id = o.operator_id
+        WHERE m.maintenance_id = %s
+    """, (maintenance_id,))
+    maintenance_record = cur.fetchone()
+
+    if not maintenance_record:
+        cur.close()
+        conn.close()
+        return "Maintenance record couldn't found.", 404
+
+
+    cur.execute("""
+        SELECT mc.quantity, c.unit_price, (mc.quantity * c.unit_price) as total_price,
+               c.component_name, c.category
+        FROM maintenance_component mc
+        JOIN components c ON mc.component_id = c.component_id
+        WHERE mc.maintenance_id = %s
+    """, (maintenance_id,))
+    used_components = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template('maintenance_detail.html',
+                           maintenance=maintenance_record,
+                           components=used_components)
+
 @app.route("/components", methods=["GET"])
 def components():
     conn = connect_db()

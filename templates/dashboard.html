@@ -12,43 +12,63 @@
 
 {% block content %}
 
-<!-- Stat cards -->
 <div class="stat-grid mb-24">
+
   <div class="stat-card">
     <div class="stat-label">Total Equipment</div>
-    <div class="stat-val">{{ stats.total_equipment }}</div>
-    <div class="stat-change up">↑ {{ stats.new_this_month }} added this month</div>
+    <div class="stat-val">{{ "{:,}".format(stats.total_equipment) }}</div>
+    <div class="stat-change up">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+      <span>{{ stats.new_this_month }} added this month</span>
+    </div>
   </div>
+
   <div class="stat-card">
     <div class="stat-label">Active Maintenance</div>
-    <div class="stat-val">{{ stats.active_maintenance }}</div>
-    <div class="stat-change warn">{{ stats.upcoming }} upcoming maintenance</div>
+    <div class="stat-val">{{ "{:,}".format(stats.active_maintenance) }}</div>
+    <div class="stat-change warn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      <span>{{ stats.upcoming }} pending tasks</span>
+    </div>
   </div>
+
   <div class="stat-card">
     <div class="stat-label">Broken Equipment</div>
-    <div class="stat-val">{{ stats.broken }}</div>
-    <div class="stat-change down">{{ stats.broken_week }} broken this week</div>
+    <div class="stat-val" style="color: var(--red);">{{ stats.broken }}</div>
+    <div class="stat-change down">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      <span>{{ stats.broken_week }} reported this week</span>
+    </div>
   </div>
+
   {% if session.role == 'admin' %}
   <div class="stat-card">
-    <div class="stat-label">Maintenance Cost This Month</div>
-    <div class="stat-val">₺{{ "{:,.0f}".format(stats.monthly_cost) }}</div>
-    <div class="stat-change {{ 'up' if stats.budget_ok else 'down' }}">
-      {{ 'Within Budget' if stats.budget_ok else 'Budget Exceeded' }}
-    </div>
+    <div class="stat-label">Monthly Cost</div>
+    <div class="stat-val" style="color: var(--purple2);">₺{{ "{:,.0f}".format(stats.monthly_cost) }}</div>
+    {% if not stats.budget_ok %}
+      <div class="stat-change down" style="background: rgba(239, 68, 68, 0.12);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="m17 5-5-3-5 3"></path><path d="m17 19-5 3-5-3"></path><circle cx="12" cy="12" r="10"></circle></svg>
+        <span>Budget Exceeded</span>
+      </div>
+    {% else %}
+      <div class="stat-change up">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        <span>Within Budget</span>
+      </div>
+    {% endif %}
   </div>
   {% else %}
   <div class="stat-card">
     <div class="stat-label">My Assigned Tasks</div>
     <div class="stat-val">{{ stats.my_tasks }}</div>
-    <div class="stat-change warn">{{ stats.my_pending }} pending</div>
+    <div class="stat-change warn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      <span>{{ stats.my_pending }} pending</span>
+    </div>
   </div>
   {% endif %}
 </div>
-
 <div class="grid-2 mb-16">
-
-  <!-- Recent maintenance records -->
   <div class="card">
     <div class="card-title">
       Recent Maintenance Records
@@ -92,7 +112,6 @@
     </div>
   </div>
 
-  <!-- Equipment summary table -->
   <div class="card">
     <div class="card-title">
       Equipment Status
@@ -133,10 +152,8 @@
       </table>
     </div>
   </div>
-
 </div>
 
-<!-- Advanced queries section -->
 <div class="card">
   <div class="card-title">Advanced Queries</div>
   <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
@@ -154,7 +171,7 @@
       background:var(--bg); border:1px solid var(--border);
       border-radius:var(--radius); text-decoration:none;
       transition:border-color .15s, background .15s;
-      " onmouseover="this.style.borderColor='var(--green)';this.style.background='var(--bg3)'"
+      " onmouseover="this.style.borderColor='var(--purple2)';this.style.background='var(--bg3)'"
          onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg)'">
       <span style="font-family:var(--mono);font-size:9px;color:var(--text3);min-width:20px;">{{ num }}</span>
       <span style="font-size:12px;color:var(--text2);">{{ label }}</span>

@@ -98,7 +98,7 @@
           <th>Operator</th>
           {% if session.role == 'admin' %}<th>Cost</th>{% endif %}
           <th>Status</th>
-          <th>Actions</th>
+
         </tr>
       </thead>
       <tbody>
@@ -121,9 +121,7 @@
               <span class="badge badge-err">Cancelled</span>
             {% endif %}
           </td>
-          <td>
-            <a href="/maintenance/edit/{{ m.maintenance_id }}" class="btn btn-sm">Detail</a>
-          </td>
+
         </tr>
         {% else %}
         <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3);">No maintenance records found.</td></tr>
