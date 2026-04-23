@@ -1,0 +1,55 @@
+{% extends "home.html" %}
+
+{% block title %}Technicians{% endblock %}
+{% block topbar_title %}Technicians{% endblock %}
+{% block topbar_sub %}{{ total }} technicians registered{% endblock %}
+{% block topbar_actions %}
+  <a href="/technicians/new" class="btn btn-primary">+ New Technician</a>
+{% endblock %}
+
+{% block content %}
+
+<div class="card" style="padding:0;">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Full Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in technicians %}
+        <tr>
+          <td class="text-mono text-dim">{{ t.user_id }}</td>
+          <td style="color:var(--text);font-weight:500;">{{ t.user_name }} {{ t.user_surname }}</td>
+          <td class="text-muted" style="font-size:11px;">{{ t.email }}</td>
+          <td>
+            <span class="badge badge-ok">Technician</span>
+          </td>
+          <td>
+            <div style="display:flex;gap:5px;">
+              <form method="POST" action="/technicians/delete/{{ t.user_id }}"
+                    onsubmit="return confirm('Are you sure you want to delete this technician?');"
+                    style="display:inline;">
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" style="text-align:center;padding:24px;color:var(--text3);">
+            No technicians found. <a href="/technicians/new" style="color:var(--purple);">Add one →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

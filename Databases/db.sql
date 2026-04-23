@@ -205,10 +205,7 @@ ALTER TABLE operators ALTER COLUMN phone TYPE VARCHAR(15);
 ALTER TABLE operators
 DROP COLUMN email;
 
-SELECT column_name, character_maximum_length
-FROM information_schema.columns
-WHERE table_name = 'equipments'
-AND data_type = 'character varying';
+
 
 
 
@@ -247,3 +244,6 @@ UNION ALL
 SELECT 'maintenance_component', COUNT(*) FROM maintenance_component
 UNION ALL
 SELECT 'users', COUNT(*) FROM users;
+
+INSERT INTO users (user_name, user_surname, user_password, user_role, email)
+VALUES ('Buse', 'Eksi', '823607', 'technician' , 'bus3eks1@gmail.com')

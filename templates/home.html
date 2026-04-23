@@ -26,7 +26,7 @@
           </svg>
         </div>
         <div>
-          <div class="logo-name">FARMAINTENANCE</div>
+          <div class="logo-name">SMART FARM</div>
           <div class="logo-sub">equipment registry</div>
         </div>
       </div>
@@ -45,8 +45,10 @@
         <a href="/equipment" class="nav-link {% if active_page == 'equipment' %}active{% endif %}">
           <i class="icon">⚙</i> Equipment
         </a>
+      {% if session.role == 'admin' or session.role == 'technician' %}
         <a href="/maintenance" class="nav-link {% if active_page == 'maintenance' %}active{% endif %}">
           <i class="icon">🔧</i> Maintenance
+        {% endif %}
           {% if pending_count and pending_count > 0 %}
             <span class="nav-badge warn">{{ pending_count }}</span>
           {% endif %}
@@ -58,6 +60,11 @@
         <a href="/operators" class="nav-link {% if active_page == 'operators' %}active{% endif %}">
           <i class="icon">◉</i> Operators
         </a>
+            {% if session.role == 'admin' %}
+                <a href="/technicians" class="nav-link {% if active_page == 'technicians' %}active{% endif %}">
+                <i class="icon">◉</i> Technicians
+                </a>
+            {% endif %}
         {% endif %}
       </div>
 

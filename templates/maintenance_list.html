@@ -4,7 +4,7 @@
 {% block topbar_title %}Maintenance Records{% endblock %}
 {% block topbar_sub %}{{ total }} records{% endblock %}
 {% block topbar_actions %}
-  {% if session.role == 'admin' %}
+  {% if session.role == 'admin' or session.role == 'technician' %}
     <a href="/maintenance/new" class="btn btn-primary">+ New Maintenance Record</a>
   {% endif %}
 {% endblock %}
@@ -75,7 +75,7 @@
           <td>
             <div style="display:flex;gap:5px;">
               <a href="/maintenance/{{ m.maintenance_id }}" class="btn btn-sm">Detail</a>
-              {% if session.role == 'admin' or (session.role == 'tech' and m.operator_id == session.user_id) %}
+              {% if session.role == 'admin' or session.role == 'technician'  %}
                 <a href="/maintenance/edit/{{ m.maintenance_id }}" class="btn btn-sm">Edit</a>
               {% endif %}
               {% if session.role == 'admin' %}

@@ -1,6 +1,6 @@
 import math
 
-from flask import Flask, render_template, session, request, redirect, url_for
+from flask import Flask, render_template, session, request, redirect, url_for, abort, flash
 import psycopg2.extras
 
 
@@ -112,7 +112,7 @@ def signup_post():
     cur.execute("SELECT * FROM users WHERE email = %s", (email,))
     exists = cur.fetchone()
     if exists:
-        print("User already exists")
+        flash("User already exists")
         cur.close()
         conn.close()
         return redirect(url_for('dashboard'))
@@ -173,7 +173,7 @@ def equipment():
         query += " AND equipment_name ILIKE %s"
         params.append(f"%{q}%")
     if status:
-        query += " AND status = %s::equipment_status"
+        query += " AND status::text = %s"
         params.append(status)
     if type_:
         query += " AND type = %s"
@@ -462,13 +462,32 @@ def maintenance_detail(maintenance_id):
 
 @app.route("/components", methods=["GET"])
 def components():
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+
     conn = connect_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("SELECT * FROM components ORDER BY component_id DESC")
+
+
+    cur.execute("SELECT COUNT(*) FROM components")
+    total = cur.fetchone()['count']
+
+
+    offset = (page - 1) * per_page
+    cur.execute("SELECT * FROM components ORDER BY component_id DESC LIMIT %s OFFSET %s", (per_page, offset))
     components = cur.fetchall()
+
     cur.close()
     conn.close()
-    return render_template("component.html" , components=components)
+
+    total_pages = (total + per_page - 1) // per_page
+
+    return render_template("component.html",
+        components=components,
+        total=total,
+        current_page=page,
+        total_pages=total_pages
+    )
 
 @app.route("/components/new", methods=["GET"])
 def component_new():
@@ -537,20 +556,42 @@ def component_delete(component_id):
 
 @app.route("/operators", methods=["GET"])
 def operators():
+    if session.get("role") != 'admin':
+        flash("You don't have permission to access this page.", "error")
+        return redirect("/dashboard")
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+
     conn = connect_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+
+    cur.execute("SELECT COUNT(*) FROM operators")
+    total = cur.fetchone()['count']
+
+
+    offset = (page - 1) * per_page
     cur.execute("""
         SELECT o.*, COUNT(m.maintenance_id) AS maintenance_count
         FROM operators o
         LEFT JOIN maintenance m ON o.operator_id = m.operator_id
         GROUP BY o.operator_id
         ORDER BY o.operator_id DESC
-    """)
+        LIMIT %s OFFSET %s
+    """, (per_page, offset))
     all_operators = cur.fetchall()
-    total = len(all_operators)
+
     cur.close()
     conn.close()
-    return render_template("operators_list.html", operators=all_operators, total=total)
+
+    total_pages = (total + per_page - 1) // per_page
+
+    return render_template("operators_list.html",
+        operators=all_operators,
+        total=total,
+        current_page=page,
+        total_pages=total_pages
+    )
 
 @app.route("/operators/new", methods=["GET"])
 def operators_new():
@@ -623,6 +664,59 @@ def operator_delete(operator_id):
         return redirect(url_for('operators'))
     else:
         return redirect(url_for('login'))
+
+@app.route("/technicians")
+def technicians():
+    if session.get("role") == 'admin':
+        conn = connect_db()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT * FROM users WHERE user_role = 'technician' ORDER BY user_id DESC")
+        all_technicians = cur.fetchall()
+        cur.close()
+        conn.close()
+        return render_template("technicians_list.html", technicians=all_technicians, total=len(all_technicians))
+
+@app.route("/technicians/new", methods=["GET", "POST"])
+def new_technician():
+    if session.get("role") != "admin":
+        flash("You don't have permission to access this page.", "error")
+        return redirect("/dashboard")
+
+    if request.method == "POST":
+        name = request.form["name"]
+        surname = request.form["surname"]
+        email = request.form["email"]
+        password = request.form["password"]
+
+        conn = connect_db()
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO users (user_name, user_surname, email, user_password, user_role) VALUES (%s, %s, %s, %s, 'technician')",
+            (name, surname, email, password)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        flash("Technician added successfully.", "success")
+        return redirect("/technicians")
+
+    return render_template("technician_form.html")
+
+@app.route("/technicians/delete/<int:technician_id>", methods=["POST"])
+def delete_technician(technician_id):
+    if session.get("role") != "admin":
+        flash("You don't have permission to access this page.", "error")
+        return redirect("/dashboard")
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("DELETE FROM users WHERE user_id = %s", (technician_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash("Technician deleted successfully.", "success")
+    return redirect("/technicians")
+
+
 
 
 
