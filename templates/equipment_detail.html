@@ -1,11 +1,11 @@
-{% extends "home.html" %}
+{% extends "login.html" %}
 
 {% block title %}{{ equipment.equipment_name }}{% endblock %}
 {% block topbar_title %}{{ equipment.equipment_name }}{% endblock %}
 {% block topbar_sub %}{{ equipment.type }} · {{ equipment.brand }} {{ equipment.model }}{% endblock %}
 {% block topbar_actions %}
   <a href="/equipment" class="btn">← Back</a>
-  {% if session.role == 'admin' %}
+  {% if session.role == 'farm_manager' %}
     <a href="/equipment/edit/{{ equipment.equipment_id }}" class="btn">Edit</a>
     <a href="/maintenance/new?equipment_id={{ equipment.equipment_id }}" class="btn btn-primary">+ Maintenance Record</a>
   {% endif %}
@@ -34,7 +34,7 @@
         <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Purchase Date</td>
         <td style="color:var(--text);padding:7px 0;font-family:var(--mono);">{{ equipment.purchase_date or '—' }}</td>
       </tr>
-      {% if session.role == 'admin' %}
+      {% if session.role == 'farm_manager' %}
       <tr>
         <td style="color:var(--text3);padding:7px 0;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Purchase Cost</td>
         <td style="color:var(--text);padding:7px 0;">₺{{ "{:,.2f}".format(equipment.purchase_cost) if equipment.purchase_cost else '—' }}</td>
@@ -67,7 +67,7 @@
       <div class="stat-label">Total Maintenance Count</div>
       <div class="stat-val">{{ maint_count }}</div>
     </div>
-    {% if session.role == 'admin' %}
+    {% if session.role == 'farm_manager' %}
     <div class="stat-card">
       <div class="stat-label">Total Maintenance Cost</div>
       <div class="stat-val">₺{{ "{:,.0f}".format(total_cost) }}</div>
@@ -85,7 +85,7 @@
 <div class="card">
   <div class="card-title">
     Maintenance History
-    {% if session.role == 'admin' %}
+    {% if session.role == 'farm_manager' %}
       <a href="/maintenance/new?equipment_id={{ equipment.equipment_id }}" class="btn btn-sm btn-primary">+ New Maintenance</a>
     {% endif %}
   </div>
@@ -96,7 +96,7 @@
           <th>Date</th>
           <th>Description</th>
           <th>Operator</th>
-          {% if session.role == 'admin' %}<th>Cost</th>{% endif %}
+          {% if session.role == 'farm_manager' %}<th>Cost</th>{% endif %}
           <th>Status</th>
 
         </tr>
@@ -107,7 +107,7 @@
           <td class="text-mono text-dim" style="font-size:11px;">{{ m.date_from }}</td>
           <td class="text-muted">{{ m.description | truncate(40) }}</td>
           <td class="text-muted">{{ m.operator_name or '—' }}</td>
-          {% if session.role == 'admin' %}
+          {% if session.role == 'farm_manager' %}
           <td class="text-mono" style="font-size:11px;">₺{{ "{:,.2f}".format(m.cost) if m.cost else '—' }}</td>
           {% endif %}
           <td>

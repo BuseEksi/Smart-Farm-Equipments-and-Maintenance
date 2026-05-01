@@ -1,10 +1,10 @@
-{% extends "home.html" %}
+{% extends "login.html" %}
 
 {% block title %}Equipment{% endblock %}
 {% block topbar_title %}Equipment{% endblock %}
 {% block topbar_sub %}{{ total }} Registered Equipment{% endblock %}
 {% block topbar_actions %}
-  {% if session.role == 'admin' %}
+  {% if session.role == 'farm_manager' %}
     <a href="/equipment/new" class="btn btn-primary">+ New Equipment</a>
   {% endif %}
 {% endblock %}
@@ -70,7 +70,7 @@
           <td>
             <div style="display:flex;gap:6px;">
               <a href="/equipment/{{ e.equipment_id }}" class="btn btn-sm">Detail</a>
-              {% if session.role == 'admin' %}
+              {% if session.role == 'farm_manager' %}
                 <a href="/equipment/edit/{{ e.equipment_id }}" class="btn btn-sm">Edit</a>
                 <form method="POST" action="/equipment/delete/{{ e.equipment_id }}"
                       onsubmit="return confirm('Are you sure you want to delete this equipment?');"
@@ -91,50 +91,25 @@
 
 <!-- Pagination -->
 {% if total_pages > 1 %}
-<div style="display:flex;gap:6px;justify-content:center;align-items:center;margin-top:16px;">
-
-  {# Önceki butonu #}
+<div style="display:flex;gap:6px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
   {% if current_page > 1 %}
-    <a href="?page={{ current_page - 1 }}&q={{ request.args.get('q','') }}&status={{ request.args.get('status','') }}&type={{ request.args.get('type','') }}"
-       class="btn btn-sm">←</a>
-  {% else %}
-    <span class="btn btn-sm" style="opacity:0.3;pointer-events:none;">←</span>
+    <a href="?page=1&q={{ q }}&approval={{ approval }}" class="btn btn-sm">«</a>
+    <a href="?page={{ current_page - 1 }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">‹</a>
   {% endif %}
 
-  {# İlk sayfa #}
-  <a href="?page=1&q={{ request.args.get('q','') }}&status={{ request.args.get('status','') }}&type={{ request.args.get('type','') }}"
-     class="btn btn-sm {% if current_page == 1 %}btn-primary{% endif %}">1</a>
-
-  {# Sol ellipsis #}
-  {% if current_page > 4 %}
-    <span style="color:var(--text3);padding:0 4px;">…</span>
-  {% endif %}
-
-  {# Orta sayfalar: current ± 2, ilk ve son hariç #}
-  {% for p in range(current_page - 2, current_page + 3) %}
-    {% if p > 1 and p < total_pages %}
-      <a href="?page={{ p }}&q={{ request.args.get('q','') }}&status={{ request.args.get('status','') }}&type={{ request.args.get('type','') }}"
+  {% for p in range(1, total_pages + 1) %}
+    {% if p == 1 or p == total_pages or (p >= current_page - 2 and p <= current_page + 2) %}
+      <a href="?page={{ p }}&q={{ q }}&approval={{ approval }}"
          class="btn btn-sm {% if p == current_page %}btn-primary{% endif %}">{{ p }}</a>
+    {% elif p == current_page - 3 or p == current_page + 3 %}
+      <span style="color:var(--text3);padding:0 4px;">…</span>
     {% endif %}
   {% endfor %}
 
-  {# Sağ ellipsis #}
-  {% if current_page < total_pages - 3 %}
-    <span style="color:var(--text3);padding:0 4px;">…</span>
-  {% endif %}
-
-  {# Son sayfa #}
-  <a href="?page={{ total_pages }}&q={{ request.args.get('q','') }}&status={{ request.args.get('status','') }}&type={{ request.args.get('type','') }}"
-     class="btn btn-sm {% if current_page == total_pages %}btn-primary{% endif %}">{{ total_pages }}</a>
-
-  {# Sonraki butonu #}
   {% if current_page < total_pages %}
-    <a href="?page={{ current_page + 1 }}&q={{ request.args.get('q','') }}&status={{ request.args.get('status','') }}&type={{ request.args.get('type','') }}"
-       class="btn btn-sm">→</a>
-  {% else %}
-    <span class="btn btn-sm" style="opacity:0.3;pointer-events:none;">→</span>
+    <a href="?page={{ current_page + 1 }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">›</a>
+    <a href="?page={{ total_pages }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">»</a>
   {% endif %}
-
 </div>
 {% endif %}
 

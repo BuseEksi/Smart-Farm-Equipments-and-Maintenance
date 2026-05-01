@@ -1,0 +1,96 @@
+{% extends "dashboard.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>Assignments</h1>
+    <br>
+    {% if session.role == 'farm_manager' %}
+    <a href="/assignments/new" class="btn btn-primary">+ New Assignment</a>
+    {% endif %}
+
+</div>
+    <br>
+
+<form method="GET" action="/assignments" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search equipment or operator..."
+         class="input" style="flex:1;min-width:200px;">
+  <select name="approval" class="input" style="width:160px;">
+    <option value="">All Statuses</option>
+    <option value="approved" {% if approval == 'approved' %}selected{% endif %}>Approved</option>
+    <option value="rejected" {% if approval == 'rejected' %}selected{% endif %}>Rejected</option>
+    <option value="pending" {% if approval == 'pending' %}selected{% endif %}>Pending</option>
+  </select>
+  <button type="submit" class="btn btn-primary">Filter</button>
+  <a href="/assignments" class="btn">Clear</a>
+</form>
+
+<div class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Equipment</th>
+                    <th>Operator</th>
+                    <th>Certificate</th>
+                    <th>Period</th>
+                    <th>Approval</th>
+                    {% if session.role == 'farm_manager' %}<th></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in assignments %}
+                <tr>
+                    <td class="text-mono text-dim">{{ a.assignment_id }}</td>
+                    <td>{{ a.equipment_name }}</td>
+                    <td>{{ a.operator_name }}</td>
+                    <td class="text-mono text-dim" style="font-size:11px;">{{ a.certificate_type or '—' }}</td>
+                    <td class="text-mono text-dim" style="font-size:11px;">{{ a.time_period or '—' }}</td>
+                    <td>
+                        {% if a.approval == true %}
+                            <span style="color:var(--purple,#639922);">Approved</span>
+                        {% elif a.approval == false %}
+                            <span style="color:var(--red,#e24b4a);">Rejected</span>
+                        {% else %}
+                            <span style="color:var(--text3);">Pending</span>
+                        {% endif %}
+                    </td>
+                    {% if session.role == 'farm_manager' %}
+                    <td>
+                        <form method="POST" action="/assignments/delete/{{ a.assignment_id }}"
+                              onsubmit="return confirm('Delete this assignment?')" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr><td colspan="7" style="text-align:center;color:var(--text3);">No records found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% if total_pages > 1 %}
+<div style="display:flex;gap:6px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
+  {% if current_page > 1 %}
+    <a href="?page=1&q={{ q }}&approval={{ approval }}" class="btn btn-sm">«</a>
+    <a href="?page={{ current_page - 1 }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">‹</a>
+  {% endif %}
+
+  {% for p in range(1, total_pages + 1) %}
+    {% if p == 1 or p == total_pages or (p >= current_page - 2 and p <= current_page + 2) %}
+      <a href="?page={{ p }}&q={{ q }}&approval={{ approval }}"
+         class="btn btn-sm {% if p == current_page %}btn-primary{% endif %}">{{ p }}</a>
+    {% elif p == current_page - 3 or p == current_page + 3 %}
+      <span style="color:var(--text3);padding:0 4px;">…</span>
+    {% endif %}
+  {% endfor %}
+
+  {% if current_page < total_pages %}
+    <a href="?page={{ current_page + 1 }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">›</a>
+    <a href="?page={{ total_pages }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">»</a>
+  {% endif %}
+</div>
+{% endif %}
+
+</div>
+{% endblock %}

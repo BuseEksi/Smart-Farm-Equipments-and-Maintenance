@@ -7,14 +7,14 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
   {% block extra_head %}{% endblock %}
 </head>
 <body>
 
-  {% if session.get('logged_in') %}
+{% if session.get('logged_in') %}
+
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="logo-mark">
@@ -33,68 +33,79 @@
     </div>
 
     <nav class="nav">
-      <div class="nav-section">
-        <div class="nav-heading">General</div>
-        <a href="/dashboard" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
-          <i class="icon">▦</i> Dashboard
-        </a>
-      </div>
 
-      <div class="nav-section">
-        <div class="nav-heading">Management</div>
-        <a href="/equipment" class="nav-link {% if active_page == 'equipment' %}active{% endif %}">
-          <i class="icon">⚙</i> Equipment
-        </a>
-      {% if session.role == 'admin' or session.role == 'technician' %}
-        <a href="/maintenance" class="nav-link {% if active_page == 'maintenance' %}active{% endif %}">
-          <i class="icon">🔧</i> Maintenance
-        {% endif %}
-          {% if pending_count and pending_count > 0 %}
-            <span class="nav-badge warn">{{ pending_count }}</span>
-          {% endif %}
-        </a>
-        <a href="/components" class="nav-link {% if active_page == 'components' %}active{% endif %}">
-          <i class="icon">◈</i> Components
-        </a>
-        {% if session.role == 'admin' %}
-        <a href="/operators" class="nav-link {% if active_page == 'operators' %}active{% endif %}">
-          <i class="icon">◉</i> Operators
-        </a>
-            {% if session.role == 'admin' %}
-                <a href="/technicians" class="nav-link {% if active_page == 'technicians' %}active{% endif %}">
-                <i class="icon">◉</i> Technicians
-                </a>
-            {% endif %}
-        {% endif %}
-      </div>
+  <div class="nav-section">
+    <div class="nav-heading">General</div>
+    <a href="/dashboard" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+      <i class="icon">▦</i> Dashboard
+    </a>
+  </div>
 
-      <div class="nav-section">
-        <div class="nav-heading">Analytics</div>
-        <a href="/queries" class="nav-link {% if active_page == 'queries' %}active{% endif %}">
-          <i class="icon">◈</i> Adv. Queries
-        </a>
-        {% if session.role == 'admin' %}
-        <a href="/reports" class="nav-link {% if active_page == 'reports' %}active{% endif %}">
-          <i class="icon">▤</i> Reports
-        </a>
-        {% endif %}
-      </div>
+  <div class="nav-section">
+    <div class="nav-heading">Management</div>
 
-      <div class="nav-section" style="margin-top: auto;">
-        <a href="/logout" class="nav-link" style="color: var(--red);">
-          <i class="icon">←</i> Log Out
-        </a>
-      </div>
-    </nav>
+    <a href="/equipment" class="nav-link {% if active_page == 'equipment' %}active{% endif %}">
+      <i class="icon">⚙</i> Equipment
+    </a>
+
+    {% if session.role == 'farm_manager' or session.role == 'technician' %}
+    <a href="/maintenance" class="nav-link {% if active_page == 'maintenance' %}active{% endif %}">
+      <i class="icon">🔧</i> Maintenance
+      {% if pending_count and pending_count > 0 %}
+        <span class="nav-badge warn">{{ pending_count }}</span>
+      {% endif %}
+    </a>
+    {% endif %}
+
+    <a href="/components" class="nav-link {% if active_page == 'components' %}active{% endif %}">
+      <i class="icon">◈</i> Components
+    </a>
+
+    {% if session.role == 'farm_manager' %}
+    <a href="/operators" class="nav-link {% if active_page == 'operators' %}active{% endif %}">
+      <i class="icon">◉</i> Operators
+    </a>
+    <a href="/assignments" class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
+      <i class="icon">◈</i> Assignments
+    </a>
+    <a href="/technicians" class="nav-link {% if active_page == 'technicians' %}active{% endif %}">
+      <i class="icon">◉</i> Technicians
+    </a>
+    {% endif %}
+
+    {% if session.role == 'operator' %}
+    <a href="/assignments" class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
+      <i class="icon">◈</i> My Assignments
+    </a>
+    {% endif %}
+
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-heading">Analytics</div>
+    <a href="/queries" class="nav-link {% if active_page == 'queries' %}active{% endif %}">
+      <i class="icon">◈</i> Adv. Queries
+    </a>
+
+  </div>
+
+  <div class="nav-section" style="margin-top: auto;">
+    <a href="/logout" class="nav-link" style="color: var(--red);">
+      <i class="icon">←</i> Log Out
+    </a>
+  </div>
+
+</nav>
 
     <div class="sidebar-user">
-      <div class="user-avatar">{{ session.initials or 'U' }}</div>
+      <div class="user-avatar">{{ session.get('username')[0] }} {{ session.get('user_surname')[0] }}</div>
       <div>
-        <div class="user-name">{{ session.username or 'User' }}</div>
+        <div class="user-name">{{ session.username or 'Operator' }}</div>
         <div class="user-role {{ session.role }}">
-          {% if session.role == 'admin' %}Admin
+          {% if session.role == 'farm_manager' %}Farm Manager
           {% elif session.role == 'technician' %}Technician
-          {% else %}User{% endif %}
+          {% else %}Operator
+          {% endif %}
         </div>
       </div>
     </div>
@@ -117,7 +128,7 @@
     </div>
   </main>
 
-  {% else %}
+{% else %}
 
   <div class="auth-container">
     {% block auth_content %}
@@ -154,7 +165,7 @@
     {% endblock %}
   </div>
 
-  {% endif %}
+{% endif %}
 
 </body>
 </html>

@@ -1,0 +1,111 @@
+{% extends "dashboard.html" %}
+{% block content %}
+<div class="page-header">
+    <h1>New Assignment</h1>
+</div>
+
+<div class="card" style="max-width:520px;">
+    <div id="cert-alert" style="display:none; padding:12px; margin-bottom:20px; border-radius:6px; font-size:14px; font-weight:500;"></div>
+
+    <form method="POST" action="/assignments/new">
+        <div class="form-group">
+            <label>Equipment</label>
+            <select name="equipment_id" id="equipment_id" required>
+                <option value="">-- Select Equipment --</option>
+                {% for e in equipments %}
+                <option value="{{ e.equipment_id }}">
+                        {{ e.equipment_name }} — {{ e.brand or '' }} {{ e.model or '' }} / Required Certification Type: {{ e.required_certification }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Operator</label>
+            <select name="op_id" id="op_id" required>
+                <option value="">-- Select Operator --</option>
+                {% for o in operators %}
+                <option value="{{ o.operator_id }}">{{ o.operator_name }} / Certificate Type: {{ o.certificate_type }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Time Period</label>
+            <input type="text" name="time_period" placeholder="e.g. 2024-01-01 / 2024-06-01">
+        </div>
+
+        <div class="form-group">
+            <label>Approval</label>
+            <select name="approval">
+                <option value="">Pending</option>
+                <option value="true">Approved</option>
+                <option value="false">Rejected</option>
+            </select>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a href="/assignments" class="btn">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<script>
+async function checkCert() {
+  const opId = document.getElementById("op_id").value;
+  const eqId = document.getElementById("equipment_id").value;
+  const alertBox = document.getElementById("cert-alert");
+  // Formdaki submit (Save) butonunu seçiyoruz
+  const saveBtn = document.querySelector('button[type="submit"]');
+
+  // Eğer seçimler boşsa uyarıyı gizle ve butonu aktif tut
+  if (!opId || !eqId) {
+    alertBox.style.display = "none";
+    if (saveBtn) saveBtn.disabled = false;
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/check-certification?op_id=${opId}&eq_id=${eqId}`);
+    const data = await res.json();
+
+    alertBox.style.display = "block";
+
+    if (data.status === "ok") {
+      alertBox.style.background = "rgba(99,153,34,0.15)";
+      alertBox.style.color = "#639922";
+      alertBox.style.border = "1px solid rgba(99,153,34,0.3)";
+      alertBox.textContent = "✓ " + (data.message || "Certification is valid.");
+      // Geçerli durumda butonu aktif et
+      if (saveBtn) saveBtn.disabled = false;
+
+    } else if (data.status === "warning") {
+      alertBox.style.background = "rgba(186,117,23,0.15)";
+      alertBox.style.color = "#ba7517";
+      alertBox.style.border = "1px solid rgba(186,117,23,0.3)";
+      alertBox.textContent = "⚠ " + (data.message || "Warning: Certification issue detected.");
+      // Uyarı durumunda (örneğin süresi az kalmış) genellikle kayda izin verilir
+      if (saveBtn) saveBtn.disabled = false;
+
+    } else if (data.status === "error") {
+      alertBox.style.background = "rgba(226,75,74,0.15)";
+      alertBox.style.color = "#e24b4a";
+      alertBox.style.border = "1px solid rgba(226,75,74,0.3)";
+      alertBox.textContent = "✕ " + (data.message || "Error: Missing certification.");
+      // SERTİFİKA HATASI: Kaydet butonunu kilitliyoruz
+      if (saveBtn) saveBtn.disabled = true;
+    }
+  } catch (error) {
+    console.error("API Error:", error);
+    alertBox.style.display = "block";
+    alertBox.textContent = "An error occurred while checking certification.";
+    if (saveBtn) saveBtn.disabled = false;
+  }
+}
+
+// Seçim değiştikçe doğrulamayı tetikle
+document.getElementById("op_id").addEventListener("change", checkCert);
+document.getElementById("equipment_id").addEventListener("change", checkCert);
+</script>
+{% endblock %}

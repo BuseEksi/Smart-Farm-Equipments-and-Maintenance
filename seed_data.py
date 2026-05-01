@@ -2,6 +2,7 @@ import psycopg2
 import random
 from faker import Faker
 from datetime import timedelta, date
+from werkzeug.security import generate_password_hash
 
 fake = Faker('en_US')
 random.seed(42)
@@ -101,14 +102,15 @@ for _ in range(150):
     hire_date = fake.date_between(start_date='-10y', end_date='-6m')
     phone = fake.numerify(text='05#########') if random.random() > 0.05 else None
     email = fake.email() if random.random() > 0.1 else None
+    cert_expiry = fake.date_between(start_date='-2y', end_date='+3y') if cert_no else None
 
     cur.execute("""
-        INSERT INTO operators (operator_name, certificate_no, certificate_type, hire_date, phone, email)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO operators (operator_name, certificate_no, certificate_type, 
+                               hire_date, phone, email, certificate_expiry_date)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         RETURNING operator_id
-    """, (name, cert_no, cert_type, hire_date, phone, email))
+    """, (name, cert_no, cert_type, hire_date, phone, email, cert_expiry))
     operator_ids.append(cur.fetchone()[0])
-
 conn.commit()
 print(f"  {len(operator_ids)} operators inserted.")
 
@@ -145,12 +147,12 @@ for _ in range(500):
 
     cur.execute("""
         INSERT INTO equipments (equipment_name, type, brand, model, serial_number,
-                                purchase_date, purchase_cost, status)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                purchase_date, purchase_cost, status, required_certification)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING equipment_id
-    """, (eq_name, eq_type, brand, model, serial, purchase_date, purchase_cost, status))
+    """, (eq_name, eq_type, brand, model, serial, purchase_date, purchase_cost, status,
+          random.choice(CERTIFICATE_TYPES) if random.random() > 0.2 else None))
     equipment_ids.append(cur.fetchone()[0])
-
 conn.commit()
 print(f"  {len(equipment_ids)} equipment inserted.")
 
@@ -205,21 +207,71 @@ for m_id in maintenance_ids:
 conn.commit()
 print(f"  {mc_count} maintenance-component records inserted.")
 
-# ─── 6. USERS ─────────────────────────────────────────────────────
-print("Inserting users...")
-cur.execute("""
-    INSERT INTO users (user_name, user_surname, user_password, user_role, email)
-    VALUES ('Admin', 'User', 'admin123', 'admin', 'admin@farm.com')
-    ON CONFLICT (email) DO NOTHING
-""")
-for _ in range(10):
+# ─── 5.5 ASSIGNMENTS ──────────────────────────────────────────────
+print("Inserting assignments...")
+assignment_count = 0
+for _ in range(1000):
+    eq_id = random.choice(equipment_ids)
+    op_id = random.choice(operator_ids)
+    start = fake.date_between(start_date='-3y', end_date='-1m')
+    end = start + timedelta(days=random.randint(7, 180))
+    time_period = f"{start} / {end}"
+    approval = random.choice([True, False, None])
+
     cur.execute("""
-        INSERT INTO users (user_name, user_surname, user_password, user_role, email)
-        VALUES (%s, %s, 'user123', 'user', %s)
-        ON CONFLICT (email) DO NOTHING
-    """, (fake.first_name(), fake.last_name(), fake.email()))
+        INSERT INTO assignments (equipment_id, op_id, time_period, approval)
+        VALUES (%s, %s, %s, %s)
+    """, (eq_id, op_id, time_period, approval))
+    assignment_count += 1
 
 conn.commit()
+print(f"  {assignment_count} assignments inserted.")
+
+# ─── 6. USERS & OPERATOR ACCOUNTS ────────────────────────────────
+print("Inserting users...")
+
+# Farm Manager (farm_manager)
+cur.execute("""
+    INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
+    VALUES (%s, %s, %s, %s, %s)
+    ON CONFLICT (email) DO NOTHING
+""", ('farm_manager', 'User', 'farm_manager', 'admin@farm.com', generate_password_hash('admin123')))
+
+# Maintenance Team (technicians)
+for i in range(5):
+    cur.execute("""
+        INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (email) DO NOTHING
+    """, (fake.first_name(), fake.last_name(), 'technician',
+          f'technician{i + 1}@farm.com',
+          generate_password_hash('tech123')))
+
+# Operators — her operator için bir users kaydı oluştur ve user_id'yi operators tablosuna yaz
+print("Linking operators to user accounts...")
+for op_id in operator_ids:
+    cur.execute("SELECT operator_name FROM operators WHERE operator_id = %s", (op_id,))
+    op = cur.fetchone()
+    name_parts = op[0].split(' ', 1)
+    first = name_parts[0]
+    last = name_parts[1] if len(name_parts) > 1 else ''
+    email = f"operator{op_id}@farm.com"
+
+    cur.execute("""
+        INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (email) DO NOTHING
+        RETURNING user_id
+    """, (first[:15], last[:15], 'operator', email, generate_password_hash('op123')))
+
+    result = cur.fetchone()
+    if result:
+        user_id = result[0]
+        cur.execute("UPDATE operators SET user_id = %s WHERE operator_id = %s", (user_id, op_id))
+
+conn.commit()
+print("  Users and operator accounts inserted.")
+
 
 # ─── SUMMARY ──────────────────────────────────────────────────────
 cur.execute("SELECT COUNT(*) FROM equipments");            eq_total   = cur.fetchone()[0]

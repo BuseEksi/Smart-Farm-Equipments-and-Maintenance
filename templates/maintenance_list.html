@@ -1,10 +1,10 @@
-{% extends "home.html" %}
+{% extends "login.html" %}
 
 {% block title %}Maintenance Records{% endblock %}
 {% block topbar_title %}Maintenance Records{% endblock %}
 {% block topbar_sub %}{{ total }} records{% endblock %}
 {% block topbar_actions %}
-  {% if session.role == 'admin' or session.role == 'technician' %}
+  {% if session.role == 'farm_manager' or session.role == 'technician' %}
     <a href="/maintenance/new" class="btn btn-primary">+ New Maintenance Record</a>
   {% endif %}
 {% endblock %}
@@ -41,7 +41,7 @@
           <th>Description</th>
           <th>Operator</th>
           <th>Date</th>
-          {% if session.role == 'admin' %}<th>Cost</th>{% endif %}
+          {% if session.role == 'farm_manager' %}<th>Cost</th>{% endif %}
           <th>Status</th>
           <th>Actions</th>
         </tr>
@@ -58,7 +58,7 @@
           <td class="text-muted">{{ m.description | truncate(35) }}</td>
           <td class="text-muted">{{ m.operator_name or '—' }}</td>
           <td class="text-mono text-dim" style="font-size:11px;">{{ m.date_from }}</td>
-          {% if session.role == 'admin' %}
+          {% if session.role == 'farm_manager' %}
           <td class="text-mono" style="font-size:11px;">{{ '₺{:,.2f}'.format(m.cost) if m.cost else '—' }}</td>
           {% endif %}
           <td>
@@ -75,10 +75,10 @@
           <td>
             <div style="display:flex;gap:5px;">
               <a href="/maintenance/{{ m.maintenance_id }}" class="btn btn-sm">Detail</a>
-              {% if session.role == 'admin' or session.role == 'technician'  %}
+              {% if session.role == 'farm_manager' or session.role == 'technician'  %}
                 <a href="/maintenance/edit/{{ m.maintenance_id }}" class="btn btn-sm">Edit</a>
               {% endif %}
-              {% if session.role == 'admin' %}
+              {% if session.role == 'farm_manager' %}
                 <form method="POST" action="/maintenance/delete/{{ m.maintenance_id }}"
                       onsubmit="return confirm('Are you sure you want to delete this maintenance record?');"
                       style="display:inline;">
@@ -97,11 +97,25 @@
 </div>
 
 {% if total_pages > 1 %}
-<div style="display:flex;gap:6px;justify-content:center;margin-top:16px;">
-  {% for p in range(1, total_pages+1) %}
-    <a href="?page={{ p }}&q={{ request.args.get('q','') }}&status={{ request.args.get('status','') }}"
-       class="btn btn-sm {% if p == current_page %}btn-primary{% endif %}">{{ p }}</a>
+<div style="display:flex;gap:6px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
+  {% if current_page > 1 %}
+    <a href="?page=1&q={{ q }}&approval={{ approval }}" class="btn btn-sm">«</a>
+    <a href="?page={{ current_page - 1 }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">‹</a>
+  {% endif %}
+
+  {% for p in range(1, total_pages + 1) %}
+    {% if p == 1 or p == total_pages or (p >= current_page - 2 and p <= current_page + 2) %}
+      <a href="?page={{ p }}&q={{ q }}&approval={{ approval }}"
+         class="btn btn-sm {% if p == current_page %}btn-primary{% endif %}">{{ p }}</a>
+    {% elif p == current_page - 3 or p == current_page + 3 %}
+      <span style="color:var(--text3);padding:0 4px;">…</span>
+    {% endif %}
   {% endfor %}
+
+  {% if current_page < total_pages %}
+    <a href="?page={{ current_page + 1 }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">›</a>
+    <a href="?page={{ total_pages }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">»</a>
+  {% endif %}
 </div>
 {% endif %}
 

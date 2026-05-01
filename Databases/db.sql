@@ -245,5 +245,42 @@ SELECT 'maintenance_component', COUNT(*) FROM maintenance_component
 UNION ALL
 SELECT 'users', COUNT(*) FROM users;
 
-INSERT INTO users (user_name, user_surname, user_password, user_role, email)
+INSERT INTO users (user_name, user_surname, user_password, user_role, email,)
 VALUES ('Buse', 'Eksi', '823607', 'technician' , 'bus3eks1@gmail.com')
+
+ALTER TABLE users
+ADD COLUMN password_hash TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE users DROP COLUMN user_password;
+
+ALTER TABLE equipments
+ADD COLUMN required_certification VARCHAR(50) DEFAULT NULL;
+
+SELECT column_name FROM information_schema.columns
+WHERE table_name = 'equipments' OR table_name = 'maintenance'
+ORDER BY table_name, column_name;
+
+-- 1. operators tablosuna user_id ekle
+ALTER TABLE operators ADD COLUMN user_id INT REFERENCES users(user_id);
+
+-- 2. users tablosundaki 'user' rolünü 'operator' olarak güncelle
+UPDATE users SET user_role = 'operator' WHERE user_role = 'user';
+
+-- 3. users tablosundaki 'admin' rolünü 'farm_manager' olarak güncelle
+UPDATE users SET user_role = 'farm_manager' WHERE user_role = 'admin';
+
+ALTER TABLE users
+    ALTER COLUMN user_role TYPE VARCHAR(20);
+
+SELECT character_maximum_length
+FROM information_schema.columns
+WHERE table_name = 'users' AND column_name = 'user_role';
+
+SELECT character_maximum_length, column_name
+FROM information_schema.columns
+WHERE table_name = 'users';
+
+ALTER TABLE operators ADD COLUMN certificate_expiry_date DATE;
+
+ALTER TABLE maintenance
+ADD COLUMN technician_id INT REFERENCES users(user_id);

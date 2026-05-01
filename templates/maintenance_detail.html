@@ -1,11 +1,11 @@
-{% extends "home.html" %}
+{% extends "login.html" %}
 
 {% block title %}Maintenance #{{ maintenance.maintenance_id }}{% endblock %}
 {% block topbar_title %}Maintenance Detail{% endblock %}
 
 {% block topbar_actions %}
   <a href="/maintenance" class="btn">← Back</a>
-  {% if session.role == 'admin' %}
+  {% if session.role == 'farm_manager' %}
     <a href="/maintenance/edit/{{ maintenance.maintenance_id }}" class="btn btn-primary">Edit Record</a>
   {% endif %}
 {% endblock %}
@@ -81,7 +81,7 @@
           <th>Component Name</th>
           <th>Category</th>
           <th>Quantity</th>
-          {% if session.role == 'admin' %}
+          {% if session.role == 'farm_manager' %}
             <th>Unit Price</th>
             <th>Subtotal</th>
           {% endif %}
@@ -93,7 +93,7 @@
           <td>{{ comp.component_name }}</td>
           <td class="text-muted">{{ comp.category }}</td>
           <td class="text-mono">{{ comp.quantity }}</td>
-          {% if session.role == 'admin' %}
+          {% if session.role == 'farm_manager' %}
             <td class="text-dim">₺{{ "{:,.2f}".format(comp.unit_price) }}</td>
             <td class="text-mono">₺{{ "{:,.2f}".format(comp.total_price) }}</td>
           {% endif %}
@@ -104,7 +104,7 @@
         </tr>
         {% endfor %}
       </tbody>
-      {% if session.role == 'admin' and maintenance.cost %}
+      {% if session.role == 'farm_manager' and maintenance.cost %}
       <tfoot>
         <tr style="border-top: 2px solid var(--border);">
             <td colspan="4" style="text-align:right; font-weight:600; padding:15px;">Total Maintenance Cost:</td>

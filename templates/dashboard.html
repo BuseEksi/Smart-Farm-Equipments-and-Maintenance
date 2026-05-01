@@ -1,14 +1,24 @@
-{% extends "home.html" %}
+{% extends "login.html" %}
 
 {% block title %}Dashboard{% endblock %}
 {% block topbar_title %}Dashboard{% endblock %}
 {% block topbar_sub %}Overview of farm equipment status{% endblock %}
 {% block topbar_actions %}
-  {% if session.role == 'admin' %}
+  {% if session.role == 'farm_manager' %}
     <a href="/equipment/new" class="btn btn-primary">+ Add Equipment</a>
     <a href="/maintenance/new" class="btn">+ Maintenance Record</a>
   {% endif %}
+  {% if session.role == 'technician' %}
+  <div class="stat-card">
+    <div class="stat-label">Tasks Assigned to Me</div>
+    <div class="stat-val">{{ stats.my_tasks }}</div>
+    <div class="stat-change info">
+      <span>Focus on your maintenance queue</span>
+    </div>
+  </div>
+  {% endif %}
 {% endblock %}
+
 
 {% block content %}
 
@@ -41,7 +51,7 @@
     </div>
   </div>
 
-  {% if session.role == 'admin' %}
+  {% if session.role == 'farm_manager' %}
   <div class="stat-card">
     <div class="stat-label">Monthly Cost</div>
     <div class="stat-val" style="color: var(--purple2);">₺{{ "{:,.0f}".format(stats.monthly_cost) }}</div>

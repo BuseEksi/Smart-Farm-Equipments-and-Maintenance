@@ -1,4 +1,4 @@
-{% extends "home.html" %}
+{% extends "login.html" %}
 
 {% block title %}Operators{% endblock %}
 {% block topbar_title %}Operators{% endblock %}
@@ -55,38 +55,25 @@
 
 <!-- Pagination -->
 {% if total_pages > 1 %}
-<div style="display:flex;gap:6px;justify-content:center;align-items:center;margin-top:16px;">
-
+<div style="display:flex;gap:6px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
   {% if current_page > 1 %}
-    <a href="?page={{ current_page - 1 }}" class="btn btn-sm">←</a>
-  {% else %}
-    <span class="btn btn-sm" style="opacity:0.3;pointer-events:none;">←</span>
+    <a href="?page=1&q={{ q }}&approval={{ approval }}" class="btn btn-sm">«</a>
+    <a href="?page={{ current_page - 1 }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">‹</a>
   {% endif %}
 
-  <a href="?page=1" class="btn btn-sm {% if current_page == 1 %}btn-primary{% endif %}">1</a>
-
-  {% if current_page > 4 %}
-    <span style="color:var(--text3);padding:0 4px;">…</span>
-  {% endif %}
-
-  {% for p in range(current_page - 2, current_page + 3) %}
-    {% if p > 1 and p < total_pages %}
-      <a href="?page={{ p }}" class="btn btn-sm {% if p == current_page %}btn-primary{% endif %}">{{ p }}</a>
+  {% for p in range(1, total_pages + 1) %}
+    {% if p == 1 or p == total_pages or (p >= current_page - 2 and p <= current_page + 2) %}
+      <a href="?page={{ p }}&q={{ q }}&approval={{ approval }}"
+         class="btn btn-sm {% if p == current_page %}btn-primary{% endif %}">{{ p }}</a>
+    {% elif p == current_page - 3 or p == current_page + 3 %}
+      <span style="color:var(--text3);padding:0 4px;">…</span>
     {% endif %}
   {% endfor %}
 
-  {% if current_page < total_pages - 3 %}
-    <span style="color:var(--text3);padding:0 4px;">…</span>
-  {% endif %}
-
-  <a href="?page={{ total_pages }}" class="btn btn-sm {% if current_page == total_pages %}btn-primary{% endif %}">{{ total_pages }}</a>
-
   {% if current_page < total_pages %}
-    <a href="?page={{ current_page + 1 }}" class="btn btn-sm">→</a>
-  {% else %}
-    <span class="btn btn-sm" style="opacity:0.3;pointer-events:none;">→</span>
+    <a href="?page={{ current_page + 1 }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">›</a>
+    <a href="?page={{ total_pages }}&q={{ q }}&approval={{ approval }}" class="btn btn-sm">»</a>
   {% endif %}
-
 </div>
 {% endif %}
 
