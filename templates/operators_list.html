@@ -20,7 +20,6 @@
           <th>Phone</th>
           <th>Email</th>
           <th>Hire Date</th>
-          <th>Maintenance Count</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -33,7 +32,7 @@
           <td class="text-mono text-muted" style="font-size:11px;">{{ op.phone or '—' }}</td>
           <td class="text-muted" style="font-size:11px;">{{ op.email or '—' }}</td>
           <td class="text-mono text-dim" style="font-size:11px;">{{ op.hire_date or '—' }}</td>
-          <td class="text-mono" style="color:var(--purple);">{{ op.maintenance_count }}</td>
+
           <td>
             <div style="display:flex;gap:5px;">
               <a href="/operators/edit/{{ op.operator_id }}" class="btn btn-sm">Edit</a>

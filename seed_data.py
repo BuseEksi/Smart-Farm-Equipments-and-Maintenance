@@ -96,40 +96,19 @@ MAINTENANCE_DESCRIPTIONS = [
 
 
 
-# ─── 1. OPERATORS (150 records) ───────────────────────────────────
-print("Inserting operators...")
-operator_ids = []
-for _ in range(150):
-    name = fake.name()
-    cert_no = fake.bothify(text='??-####-??').upper() if random.random() > 0.1 else None
-    cert_type = random.choice(CERTIFICATE_TYPES) if cert_no else None
-    hire_date = fake.date_between(start_date='-10y', end_date='-6m')
-    phone = fake.numerify(text='05#########') if random.random() > 0.05 else None
-    email = fake.email() if random.random() > 0.1 else None
-    cert_expiry = fake.date_between(start_date='-2y', end_date='+3y') if cert_no else None
-
-    cur.execute("""
-        INSERT INTO operators (operator_name, certificate_no, certificate_type, 
-                               hire_date, phone, email, certificate_expiry_date)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        RETURNING operator_id
-    """, (name, cert_no, cert_type, hire_date, phone, email, cert_expiry))
-    operator_ids.append(cur.fetchone()[0])
-conn.commit()
-print(f"  {len(operator_ids)} operators inserted.")
-
-#------------------------------------------------------------------
-
-print("Inserting users...")
-
-# Farm Manager (farm_manager)
+#-------------------------------------------------------------------
+# ─── 1. FARM MANAGER ──────────────────────────────────────────────
+print("Inserting farm manager...")
 cur.execute("""
     INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
     VALUES (%s, %s, %s, %s, %s)
     ON CONFLICT (email) DO NOTHING
 """, ('farm_manager', 'User', 'farm_manager', 'admin@farm.com', generate_password_hash('admin123')))
+conn.commit()
 
-# Maintenance Team (technicians)
+# ─── 2. TECHNICIANS ───────────────────────────────────────────────
+print("Inserting technicians...")
+tech_ids = []
 for i in range(5):
     cur.execute("""
         INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
@@ -137,36 +116,55 @@ for i in range(5):
         ON CONFLICT (email) DO NOTHING
         RETURNING user_id
     """, (fake.first_name(), fake.last_name(), 'technician',
-          f'technician{i + 1}@farm.com',
+          f'technician{i+1}@farm.com',
           generate_password_hash('tech123')))
     result = cur.fetchone()
     if result:
         tech_ids.append(result[0])
+conn.commit()
+print(f"  {len(tech_ids)} technicians inserted.")
 
-# Operators — her operator için bir users kaydı oluştur ve user_id'yi operators tablosuna yaz
-print("Linking operators to user accounts...")
-for op_id in operator_ids:
-    cur.execute("SELECT operator_name FROM operators WHERE operator_id = %s", (op_id,))
-    op = cur.fetchone()
-    name_parts = op[0].split(' ', 1)
-    first = name_parts[0]
-    last = name_parts[1] if len(name_parts) > 1 else ''
-    email = f"operator{op_id}@farm.com"
+# ─── 3. OPERATORS ─────────────────────────────────────────────────
+print("Inserting operators + their user accounts...")
+operator_ids = []
+for _ in range(150):
+    name = fake.name()
+    name_parts = name.split(' ', 1)
+    first = name_parts[0][:15]
+    last = (name_parts[1] if len(name_parts) > 1 else '')[:15]
+
+    cert_no = fake.bothify(text='??-####-??').upper() if random.random() > 0.1 else None
+    cert_type = random.choice(CERTIFICATE_TYPES) if cert_no else None
+    hire_date = fake.date_between(start_date='-10y', end_date='-6m')
+    phone = fake.numerify(text='05#########') if random.random() > 0.05 else None
+    email = fake.email() if random.random() > 0.1 else fake.bothify(text='op_??####@farm.com')
+    cert_expiry = fake.date_between(start_date='-2y', end_date='+3y') if cert_no else None
 
     cur.execute("""
         INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
         VALUES (%s, %s, %s, %s, %s)
         ON CONFLICT (email) DO NOTHING
         RETURNING user_id
-    """, (first[:15], last[:15], 'operator', email, generate_password_hash('op123')))
+    """, (first, last, 'operator', email, generate_password_hash('op123')))
 
     result = cur.fetchone()
-    if result:
-        user_id = result[0]
-        cur.execute("UPDATE operators SET user_id = %s WHERE operator_id = %s", (user_id, op_id))
+    if not result:
+        continue
+    user_id = result[0]
+
+    cur.execute("""
+        INSERT INTO operators (user_id, operator_name, certificate_no, certificate_type,
+                               hire_date, phone, email, certificate_expiry_date)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING operator_id
+    """, (user_id, name, cert_no, cert_type, hire_date, phone, email, cert_expiry))
+    operator_ids.append(cur.fetchone()[0])
 
 conn.commit()
-print("  Users and operator accounts inserted.")
+print(f"  {len(operator_ids)} operators inserted.")
+
+
+
 
 
 # ─── 2. COMPONENTS (30 records) ───────────────────────────────────
