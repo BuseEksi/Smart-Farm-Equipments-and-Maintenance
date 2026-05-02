@@ -11,7 +11,8 @@
 
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+
+
 
 {% if session.get('logged_in') %}
 
@@ -117,13 +118,29 @@
       <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
     </div>
 
-    <div class="content">
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, msg in messages %}
-          <div class="flash flash-{{ category }}">{{ msg }}</div>
-        {% endfor %}
-      {% endwith %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="flash-msg flash-{{ category }}"
+           style="padding:10px 16px; margin:8px 0; border-radius:6px;
+                  background: rgba(239,68,68,0.12); color:var(--red);
+                  font-size:13px; border:1px solid rgba(239,68,68,0.3);">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
 
+<script>
+  setTimeout(() => {
+    document.querySelectorAll('.flash-msg').forEach(el => {
+      el.style.transition = 'opacity 0.5s';
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 500);
+    });
+  }, 3000);
+</script>
+  <div class="content">
       {% block content %}{% endblock %}
     </div>
   </main>

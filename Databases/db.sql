@@ -284,3 +284,7 @@ ALTER TABLE operators ADD COLUMN certificate_expiry_date DATE;
 
 ALTER TABLE maintenance
 ADD COLUMN technician_id INT REFERENCES users(user_id);
+
+ALTER TABLE operators
+ADD CONSTRAINT fk_operators_user
+FOREIGN KEY (user_id) REFERENCES users(user_id);

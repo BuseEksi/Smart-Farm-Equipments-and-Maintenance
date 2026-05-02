@@ -11,6 +11,27 @@
 
 {% block content %}
 
+<!--Filters-->
+    <div style="display:flex; gap:8px; align-items:center; margin-bottom:16px; flex-wrap:wrap;">
+  <form method="GET" action="/components" style="display:flex;gap:8px;flex:1;min-width:0;">
+    <input type="text" name="q" value="{{ request.args.get('q','') }}"
+           placeholder="Search component..." style="max-width:240px;">
+
+    <select name="category" style="max-width:140px;">
+      <option value="">All Categories</option>
+      {% for t in categories %}
+        <option value="{{ t }}" {{ 'selected' if request.args.get('category')==t }}>{{ t }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn">Filter</button>
+    {% if request.args.get('q') or request.args.get('category') %}
+      <a href="/components" class="btn">✕ Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- -->
+
 <div class="card" style="padding:0;">
   <div class="table-wrap">
     <table>

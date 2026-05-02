@@ -20,8 +20,11 @@ def connect_db():
     return conn
 
 
+
 @app.route("/dashboard")
 def dashboard():
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
     conn = connect_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
@@ -74,8 +77,47 @@ def dashboard():
                 "ORDER BY e.equipment_name LIMIT 8;")
     equipment_summary = cur.fetchall()
 
+    if session.get("role") == "operator":
+        cur.execute("""
+            SELECT COUNT(*) AS cnt 
+            FROM assignments a
+            JOIN operators o ON a.op_id = o.operator_id
+            WHERE o.user_id = %s AND a.approval = true
+        """, (session.get("user_id"),))
+        my_tasks = cur.fetchone()["cnt"]
+
+        cur.execute("""
+            SELECT COUNT(*) AS cnt 
+            FROM assignments a
+            JOIN operators o ON a.op_id = o.operator_id
+            WHERE o.user_id = %s AND a.approval IS NULL
+        """, (session.get("user_id"),))
+        my_pending = cur.fetchone()["cnt"]
+    else:
+        my_tasks = 0
+        my_pending = 0
+
+    if session.get("role") == "technician":
+        cur.execute("""
+                    SELECT COUNT(*) AS cnt 
+                    FROM maintenance m
+                    JOIN users t ON t.user_id = m.technician_id
+                    WHERE t.user_id = %s 
+                """, (session.get("user_id"),))
+        my_tasks = cur.fetchone()["cnt"]
+
+        cur.execute("""
+                    SELECT COUNT(*) AS cnt 
+                    FROM maintenance m
+                    JOIN users t ON t.user_id = m.technician_id
+                    WHERE t.user_id = %s 
+                """, (session.get("user_id"),))
+        my_pending = cur.fetchone()["cnt"]
+
+
     cur.close()
     conn.close()
+
 
     stats = {
         "total_equipment": total_equipment,
@@ -86,8 +128,8 @@ def dashboard():
         "broken_week": broken_week,
         "monthly_cost": monthly_cost,
         "budget_ok": budget_ok,
-        "my_tasks": 0,
-        "my_pending": 0,
+        "my_tasks": my_tasks,
+        "my_pending": my_pending,
     }
 
     return render_template("dashboard.html",
@@ -121,8 +163,13 @@ def signup_post():
         return redirect(url_for('login'))
     else:
         cur.execute("INSERT INTO users (user_name, user_surname, user_role, email, password_hash) "
-                    "VALUES (%s, %s, %s, %s, %s)",
+                    "VALUES (%s, %s, %s, %s, %s) RETURNING user_id",
                     (name, surname,  role, email, hashed_password))
+        new_user_id = cur.fetchone()['user_id']
+
+        cur.execute(
+            "INSERT INTO operators (operator_name, user_id) VALUES (%s, %s)",
+            (f"{name} {surname}", new_user_id))
         conn.commit()
         cur.close()
         conn.close()
@@ -154,7 +201,7 @@ def login_form():
 
         return redirect(url_for('dashboard'))
     else:
-        flash("Login failed.")
+        flash("Invalid email or password.", "error")
         cur.close()
         conn.close()
         return redirect(url_for('login'))
@@ -206,7 +253,7 @@ def equipment():
 
     equipment_types = ['Agriculture', 'Harvesting', 'Irrigation', 'Pest Control', 'Transportation', 'Other']
 
-    return render_template("equipment_list.html", equipment=items, total=total_count,
+    return render_template("equipments_list.html", equipment=items, total=total_count,
                            total_pages=pages, current_page=page, equipment_types=equipment_types)
 
 @app.route("/equipment/new", methods=["GET"])
@@ -849,12 +896,12 @@ def components():
 
     total_pages = (total + per_page - 1) // per_page
 
-    return render_template("component.html",
-        components=components,
-        total=total,
-        current_page=page,
-        total_pages=total_pages
-    )
+    return render_template("components_list.html",
+                           components=components,
+                           total=total,
+                           current_page=page,
+                           total_pages=total_pages
+                           )
 
 @app.route("/components/new", methods=["GET"])
 def component_new():
@@ -972,16 +1019,32 @@ def operator_new_form():
     if session.get("role") == 'farm_manager':
         conn = connect_db()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
         operator_name = request.form["operator_name"]
         certificate_no = request.form["certificate_no"] or None
         certificate_type = request.form["certificate_type"] or None
         hire_date = request.form["hire_date"] or None
-        phone= request.form["phone"] or None
+        phone = request.form["phone"] or None
         email = request.form["email"] or None
+        password = request.form["password"]  # new field
+
+        # 1. Create the users row first
+        hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
         cur.execute(
-        "INSERT INTO operators (operator_name, certificate_no, certificate_type, hire_date, phone, email)"
-                "VALUES(%s, %s, %s, %s, %s, %s)",
-        (operator_name, certificate_no, certificate_type, hire_date, phone, email))
+            "INSERT INTO users (user_name, user_surname, user_role, email, password_hash) "
+            "VALUES (%s, %s, 'operator', %s, %s) RETURNING user_id",
+            (operator_name, '', email, hashed_password)
+        )
+        new_user_id = cur.fetchone()['user_id']
+
+        # 2. Create the operators profile row linked to that user
+        cur.execute(
+            "INSERT INTO operators (operator_name, certificate_no, certificate_type, "
+            "hire_date, phone, email, user_id) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (operator_name, certificate_no, certificate_type,
+             hire_date, phone, email, new_user_id)
+        )
         conn.commit()
         cur.close()
         conn.close()
@@ -1024,7 +1087,12 @@ def operator_delete(operator_id):
     if session.get("role") == 'farm_manager':
         conn = connect_db()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT user_id FROM operators WHERE operator_id = %s", (operator_id,))
+        op = cur.fetchone()
+
         cur.execute("DELETE FROM operators WHERE operator_id = %s", (operator_id,))
+        if op and op['user_id']:
+            cur.execute("DELETE FROM users WHERE user_id = %s", (op['user_id'],))
         conn.commit()
         cur.close()
         conn.close()
