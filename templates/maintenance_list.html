@@ -24,8 +24,7 @@
     </select>
     <input type="date" name="date_from" value="{{ request.args.get('date_from','') }}"
            style="max-width:140px;" title="Start date">
-    <input type="date" name="date_to" value="{{ request.args.get('date_to','') }}"
-           style="max-width:140px;" title="End date">
+
     <button type="submit" class="btn">Filter</button>
     <a href="/maintenance" class="btn">✕</a>
   </form>
@@ -39,7 +38,7 @@
           <th>ID</th>
           <th>Equipment</th>
           <th>Description</th>
-          <th>Operator</th>
+          <th>Technician</th>
           <th>Date</th>
           {% if session.role == 'farm_manager' %}<th>Cost</th>{% endif %}
           <th>Status</th>
@@ -56,7 +55,7 @@
             </a>
           </td>
           <td class="text-muted">{{ m.description | truncate(35) }}</td>
-          <td class="text-muted">{{ m.operator_name or '—' }}</td>
+          <td class="text-muted">{{ m.technician_name or '—' }}</td>
           <td class="text-mono text-dim" style="font-size:11px;">{{ m.date_from }}</td>
           {% if session.role == 'farm_manager' %}
           <td class="text-mono" style="font-size:11px;">{{ '₺{:,.2f}'.format(m.cost) if m.cost else '—' }}</td>

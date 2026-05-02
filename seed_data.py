@@ -15,6 +15,7 @@ conn = psycopg2.connect(
     password="823607"
 )
 cur = conn.cursor()
+tech_ids = []
 
 print("Connected successfully, inserting data...")
 
@@ -90,7 +91,10 @@ MAINTENANCE_DESCRIPTIONS = [
     'Fuel system cleaning',
     'Transmission overhaul',
     'Battery and charging system check',
+
 ]
+
+
 
 # ─── 1. OPERATORS (150 records) ───────────────────────────────────
 print("Inserting operators...")
@@ -113,6 +117,57 @@ for _ in range(150):
     operator_ids.append(cur.fetchone()[0])
 conn.commit()
 print(f"  {len(operator_ids)} operators inserted.")
+
+#------------------------------------------------------------------
+
+print("Inserting users...")
+
+# Farm Manager (farm_manager)
+cur.execute("""
+    INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
+    VALUES (%s, %s, %s, %s, %s)
+    ON CONFLICT (email) DO NOTHING
+""", ('farm_manager', 'User', 'farm_manager', 'admin@farm.com', generate_password_hash('admin123')))
+
+# Maintenance Team (technicians)
+for i in range(5):
+    cur.execute("""
+        INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (email) DO NOTHING
+        RETURNING user_id
+    """, (fake.first_name(), fake.last_name(), 'technician',
+          f'technician{i + 1}@farm.com',
+          generate_password_hash('tech123')))
+    result = cur.fetchone()
+    if result:
+        tech_ids.append(result[0])
+
+# Operators — her operator için bir users kaydı oluştur ve user_id'yi operators tablosuna yaz
+print("Linking operators to user accounts...")
+for op_id in operator_ids:
+    cur.execute("SELECT operator_name FROM operators WHERE operator_id = %s", (op_id,))
+    op = cur.fetchone()
+    name_parts = op[0].split(' ', 1)
+    first = name_parts[0]
+    last = name_parts[1] if len(name_parts) > 1 else ''
+    email = f"operator{op_id}@farm.com"
+
+    cur.execute("""
+        INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
+        VALUES (%s, %s, %s, %s, %s)
+        ON CONFLICT (email) DO NOTHING
+        RETURNING user_id
+    """, (first[:15], last[:15], 'operator', email, generate_password_hash('op123')))
+
+    result = cur.fetchone()
+    if result:
+        user_id = result[0]
+        cur.execute("UPDATE operators SET user_id = %s WHERE operator_id = %s", (user_id, op_id))
+
+conn.commit()
+print("  Users and operator accounts inserted.")
+
 
 # ─── 2. COMPONENTS (30 records) ───────────────────────────────────
 print("Inserting components...")
@@ -161,7 +216,7 @@ print("Inserting maintenance records... (this may take a moment)")
 maintenance_ids = []
 for i in range(4500):
     eq_id = random.choice(equipment_ids)
-    op_id = random.choice(operator_ids) if random.random() > 0.1 else None
+    tech_id = random.choice(tech_ids) if random.random() > 0.1 else None
     date_from = fake.date_between(start_date='-5y', end_date='today')
     status = random.choices(MAINTENANCE_STATUSES, weights=[20, 25, 55])[0]
 
@@ -175,11 +230,11 @@ for i in range(4500):
     notes = fake.sentence(nb_words=8) if random.random() > 0.6 else None
 
     cur.execute("""
-        INSERT INTO maintenance (status, equipment_id, description, operator_id,
+        INSERT INTO maintenance (status, equipment_id, description, technician_id,
                                  cost, notes, date_from, date_to)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING maintenance_id
-    """, (status, eq_id, description, op_id, cost, notes, date_from, date_to))
+    """, (status, eq_id, description, tech_id, cost, notes, date_from, date_to))
     maintenance_ids.append(cur.fetchone()[0])
 
     if (i + 1) % 500 == 0:
@@ -227,50 +282,7 @@ for _ in range(1000):
 conn.commit()
 print(f"  {assignment_count} assignments inserted.")
 
-# ─── 6. USERS & OPERATOR ACCOUNTS ────────────────────────────────
-print("Inserting users...")
 
-# Farm Manager (farm_manager)
-cur.execute("""
-    INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
-    VALUES (%s, %s, %s, %s, %s)
-    ON CONFLICT (email) DO NOTHING
-""", ('farm_manager', 'User', 'farm_manager', 'admin@farm.com', generate_password_hash('admin123')))
-
-# Maintenance Team (technicians)
-for i in range(5):
-    cur.execute("""
-        INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
-        VALUES (%s, %s, %s, %s, %s)
-        ON CONFLICT (email) DO NOTHING
-    """, (fake.first_name(), fake.last_name(), 'technician',
-          f'technician{i + 1}@farm.com',
-          generate_password_hash('tech123')))
-
-# Operators — her operator için bir users kaydı oluştur ve user_id'yi operators tablosuna yaz
-print("Linking operators to user accounts...")
-for op_id in operator_ids:
-    cur.execute("SELECT operator_name FROM operators WHERE operator_id = %s", (op_id,))
-    op = cur.fetchone()
-    name_parts = op[0].split(' ', 1)
-    first = name_parts[0]
-    last = name_parts[1] if len(name_parts) > 1 else ''
-    email = f"operator{op_id}@farm.com"
-
-    cur.execute("""
-        INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
-        VALUES (%s, %s, %s, %s, %s)
-        ON CONFLICT (email) DO NOTHING
-        RETURNING user_id
-    """, (first[:15], last[:15], 'operator', email, generate_password_hash('op123')))
-
-    result = cur.fetchone()
-    if result:
-        user_id = result[0]
-        cur.execute("UPDATE operators SET user_id = %s WHERE operator_id = %s", (user_id, op_id))
-
-conn.commit()
-print("  Users and operator accounts inserted.")
 
 
 # ─── SUMMARY ──────────────────────────────────────────────────────

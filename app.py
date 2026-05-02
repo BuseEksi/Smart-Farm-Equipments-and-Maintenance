@@ -313,138 +313,479 @@ def equipment_detail(equipment_id):
                            total_cost=total_cost,
                            last_maint=last_maint,)
 
-@app.route("/maintenance", methods=["GET"])
-def maintenance():
-    conn = connect_db()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    q = request.args.get("q", "")
-    status = request.args.get("status", "")
-    date_from = request.args.get("date_from", "")
-    date_to = request.args.get("date_to", "")
-    page = int(request.args.get("page", 1))
-    offset = (page - 1) * 10
 
-    query = """
-        SELECT m.*, e.equipment_name 
-        FROM maintenance m
-        JOIN equipments e ON m.equipment_id = e.equipment_id
-        WHERE 1=1
-    """
+"""
+Maintenance Route'ları - Güncellenmiş Versiyon
+Technician atama ve Component stok yönetimi ile
+"""
 
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+
+# === MAINTENANCE LİSTELEME ===
+@app.route('/maintenance')
+def maintenance_list():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+
+# --- PAGINATION ---
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    offset = (page - 1) * per_page
+
+# --- FILTERS ---
+    q = request.args.get('q', '').strip()
+    equipment_filter = request.args.get('equipment_id')
+    status_filter = request.args.get('status')
+    technician_filter = request.args.get('technician_id')
+    date_from = request.args.get('date_from')
+
+
+    where_conditions = []
     params = []
+
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+
+
+# SEARCH
     if q:
-        query += " AND equipment_name ILIKE %s"
-        params.append(f"%{q}%")
-    if status:
-        query += " AND m.status = %s"
-        params.append(status)
+        where_conditions.append("""
+            (m.description ILIKE %s 
+            OR e.equipment_name ILIKE %s 
+             OR t.user_name ILIKE %s)
+        """)
+        search = f"%{q}%"
+        params.extend([search, search, search])
+
+    if equipment_filter:
+        where_conditions.append("m.equipment_id = %s")
+        params.append(equipment_filter)
+
+    if status_filter:
+        where_conditions.append("m.status = %s")
+        params.append(status_filter)
+
+    if technician_filter:
+        where_conditions.append("m.technician_id = %s")
+        params.append(technician_filter)
+
     if date_from:
-        query += " AND m.date_from >= %s::date"
+        where_conditions.append("m.date_from >= %s")
         params.append(date_from)
-    if date_to:
-        query += " AND m.date_to <= %s::date"
-        params.append(date_to)
 
 
-    count_query = "SELECT COUNT(*) AS cnt FROM (" + query + ") AS sub"
+
+    where_clause = ""
+    if where_conditions:
+        where_clause = "WHERE " + " AND ".join(where_conditions)
+
+
+
+# --- TOTAL COUNT ---
+    count_query = f"""
+        SELECT COUNT(*) AS cnt
+        FROM maintenance m
+        LEFT JOIN equipments e ON m.equipment_id = e.equipment_id
+        LEFT JOIN users t ON m.technician_id = t.user_id
+        {where_clause}
+    """
     cur.execute(count_query, params)
-    total_count = cur.fetchone()["cnt"]
-    pages = math.ceil(total_count / 10) if total_count else 1
+    total = cur.fetchone()['cnt']
 
+    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
 
-    query += " ORDER BY m.date_from DESC LIMIT 10 OFFSET %s"
-    params.append(offset)
+# --- DATA QUERY ---
+    data_query = f"""
+        SELECT m.*, 
+            e.equipment_name,
+            e.type AS equipment_type,
+            t.user_name AS technician_name
+        FROM maintenance m
+        LEFT JOIN equipments e ON m.equipment_id = e.equipment_id
+        LEFT JOIN users t ON m.technician_id = t.user_id
+        {where_clause}
+        ORDER BY m.date_from DESC
+        LIMIT %s OFFSET %s
+    """
+    cur.execute(data_query, params + [per_page, offset])
+    maintenances = cur.fetchall()
 
-    cur.execute(query, params)
-    items = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    return render_template("maintenance_list.html", maintenance=items, total=total_count,
-                           total_pages=pages, current_page=page)
-
-@app.route("/maintenance/new", methods=["GET"])
-def maintenance_new():
-    conn = connect_db()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("SELECT equipment_id , equipment_name, type FROM equipments ORDER BY equipment_id DESC")
+# --- DROPDOWNS ---
+    cur.execute("SELECT equipment_id, equipment_name FROM equipments ORDER BY equipment_name")
     equipments = cur.fetchall()
-    cur.execute("SELECT user_id, user_name FROM users WHERE user_role = 'technician' ORDER BY user_id DESC")
+
+    cur.execute("""
+        SELECT user_id, user_name 
+        FROM users 
+        WHERE user_role = 'technician'
+        ORDER BY user_name
+        """)
     technicians = cur.fetchall()
+
     cur.close()
     conn.close()
-    return render_template("maintenance_form.html" , equipments=equipments, technicians=technicians)
-@app.route("/maintenance/new", methods=["POST"])
+    return render_template('maintenance_list.html', maintenance=maintenances,
+                           total=total, current_page=page, total_pages=total_pages,
+                           q=q, equipments=equipments, technicians=technicians,
+                           equipment_filter=equipment_filter, status_filter=status_filter,
+                           technician_filter=technician_filter ,date_from=date_from)
+
+
+
+
+
+
+# === YENİ MAINTENANCE OLUŞTURMA (GET) ===
+@app.route('/maintenance/new', methods=['GET'])
 def maintenance_new_form():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
     conn = connect_db()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur = conn.cursor(cursor_factory=RealDictCursor)
 
-    cur.execute("INSERT INTO maintenance (status,  equipment_id, description, technician_id, cost, notes, date_from) "
-                "VALUES (%s, %s, %s, %s, %s, %s ,%s)", (request.form["status"],
-                                                        request.form["equipment_id"],
-                                                        request.form["description"],
-                                                        request.form.get('user_id') or None,
-                                                        request.form["cost"] or None,
-                                                        request.form["notes"] or None,
-                                                        request.form["date_from"]))
-    m_id = cur.fetchone()["maintenance_id"]
-
-    component_ids = request.form.getlist("component_ids")
-    for c_id in component_ids:
-
-        qty = 1
-
-
-        cur.execute("INSERT INTO maintenance_component (maintenance_id, component_id, quantity) VALUES (%s, %s, %s)",
-                    (m_id, c_id, qty))
-
-
-        cur.execute("UPDATE components SET stock_quantity = stock_quantity - %s WHERE component_id = %s",
-                    (qty, c_id))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return redirect(url_for('maintenance'))
-
-@app.route("/maintenance/delete/<int:maintenance_id>", methods=["POST"])
-def maintenance_delete(maintenance_id):
-    conn = connect_db()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("DELETE FROM maintenance WHERE maintenance_id = %s", (maintenance_id,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return redirect(url_for('maintenance'))
-
-@app.route("/maintenance/edit/<int:maintenance_id>", methods=["GET","POST"])
-def maintenance_edit(maintenance_id):
-    conn = connect_db()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("SELECT equipment_id , equipment_name, type FROM equipments ORDER BY equipment_id DESC")
+    # Equipment'ları çek
+    cur.execute("SELECT * FROM equipments ORDER BY equipment_name")
     equipments = cur.fetchall()
-    cur.execute("SELECT operator_id, operator_name FROM operators ORDER BY operator_id DESC")
-    operators = cur.fetchall()
-    if request.method == "POST":
-        status = request.form["status"]
-        equipment_id = request.form["equipment_id"]
-        description = request.form["description"]
-        date_from = request.form["date_from"]
-        operator_id = request.form["operator_id"] or None
-        cost = request.form["cost"] or None
-        notes = request.form["notes"] or None
-        cur.execute("UPDATE maintenance SET equipment_id = %s , status= %s ,description = %s,"
-                        " date_from = %s , operator_id = %s , cost = %s ,notes = %s WHERE maintenance_id = %s",
-                    (equipment_id, status, description, date_from, operator_id, cost, notes, maintenance_id))
+
+    # Technician'ları çek (user_role = 'technician' olanlar)
+    cur.execute("""
+        SELECT user_id, user_name, email 
+        FROM users 
+        WHERE user_role = 'technician'
+        ORDER BY user_name
+    """)
+    technicians = cur.fetchall()
+
+    # Component'lari çek (stokta olanlar)
+    cur.execute("""
+        SELECT component_id, component_name, stock_quantity
+        FROM components
+        WHERE stock_quantity > 0
+        ORDER BY component_name
+    """)
+    components = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template('maintenance_form.html',
+                           equipments=equipments,
+                           technicians=technicians,
+                           components=components,
+                           maintenance=None,
+                           selected_components=[],
+                           selected_quantities={})
+
+
+# === YENİ MAINTENANCE OLUŞTURMA (POST) ===
+@app.route('/maintenance/new', methods=['POST'])
+def maintenance_new_submit():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    equipment_id = request.form.get('equipment_id')
+    description = request.form.get('description')
+    date_from = request.form.get('date_from')
+    status = request.form.get('status')
+    technician_id = request.form.get('technician_id') or None
+    cost = request.form.get('cost') or None
+    notes = request.form.get('notes') or None
+
+    # Component'leri al
+    component_ids = request.form.getlist('component_ids[]')
+
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        # 1. Maintenance kaydını oluştur
+        cur.execute("""
+            INSERT INTO maintenance 
+            (equipment_id, description, date_from, status, technician_id, cost, notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING maintenance_id
+        """, (equipment_id, description, date_from, status, technician_id, cost, notes))
+
+        maintenance_id = cur.fetchone()['maintenance_id']
+
+        # 2. Seçilen component'leri işle
+        for component_id in component_ids:
+            quantity = int(request.form.get(f'component_quantities_{component_id}', 1))
+
+            # Component stoğunu kontrol et
+            cur.execute("""
+                SELECT stock_quantity, component_name 
+                FROM components 
+                WHERE component_id = %s
+            """, (component_id,))
+            component = cur.fetchone()
+
+            if not component:
+                raise Exception(f"Component ID {component_id} bulunamadı!")
+
+            if component['stock_quantity'] < quantity:
+                raise Exception(
+                    f"{component['component_name']} için yeterli stok yok! "
+                    f"İstenen: {quantity}, Mevcut: {component['stock_quantity']}"
+                )
+
+            # maintenance_component tablosuna ekle
+            cur.execute("""
+                INSERT INTO maintenance_component 
+                (maintenance_id, component_id, quantity)
+                VALUES (%s, %s, %s)
+            """, (maintenance_id, component_id, quantity))
+
+            # Component stoğunu düşür
+            cur.execute("""
+                UPDATE components 
+                SET stock_quantity = stock_quantity - %s
+                WHERE component_id = %s
+            """, (quantity, component_id))
+
         conn.commit()
+        flash('Maintenance record created successfully!', 'success')
+        return redirect(url_for('maintenance_list'))
+
+    except Exception as e:
+        conn.rollback()
+        flash(f'Error creating maintenance: {str(e)}', 'error')
+        return redirect(url_for('maintenance_new_form'))
+
+    finally:
         cur.close()
         conn.close()
-        return redirect(url_for('maintenance'))
-    else:
-        cur.execute("SELECT * FROM maintenance WHERE maintenance_id = %s", (maintenance_id,))
-        maintenance = cur.fetchone()
+
+
+# === MAINTENANCE DÜZENLEME (GET) ===
+@app.route('/maintenance/edit/<int:maintenance_id>', methods=['GET'])
+def maintenance_edit_form(maintenance_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    # Maintenance kaydını çek
+    cur.execute("""
+        SELECT * FROM maintenance 
+        WHERE maintenance_id = %s
+    """, (maintenance_id,))
+    maintenance = cur.fetchone()
+
+    if not maintenance:
+        flash('Maintenance record not found!', 'error')
+        return redirect(url_for('maintenance_list'))
+
+    # Equipment'ları çek
+    cur.execute("SELECT * FROM equipments ORDER BY equipment_name")
+    equipments = cur.fetchall()
+
+    # Technician'ları çek
+    cur.execute("""
+        SELECT user_id, user_name, email 
+        FROM users 
+        WHERE user_role = 'technician'
+        ORDER BY user_name
+    """)
+    technicians = cur.fetchall()
+
+    # Tüm component'lari çek
+    cur.execute("""
+        SELECT component_id, component_name, stock_quantity
+        FROM components
+        ORDER BY component_name
+    """)
+    components = cur.fetchall()
+
+    # Bu maintenance'ta kullanılan component'leri çek
+    cur.execute("""
+        SELECT component_id, quantity
+        FROM maintenance_component
+        WHERE maintenance_id = %s
+    """, (maintenance_id,))
+    used_components = cur.fetchall()
+
+    selected_components = [c['component_id'] for c in used_components]
+    selected_quantities = {c['component_id']: c['quantity'] for c in used_components}
+
+    cur.close()
+    conn.close()
+
+    return render_template('maintenance_form.html',
+                           maintenance=maintenance,
+                           equipments=equipments,
+                           technicians=technicians,
+                           components=components,
+                           selected_components=selected_components,
+                           selected_quantities=selected_quantities)
+
+
+# === MAINTENANCE DÜZENLEME (POST) ===
+@app.route('/maintenance/edit/<int:maintenance_id>', methods=['POST'])
+def maintenance_edit_submit(maintenance_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    equipment_id = request.form.get('equipment_id')
+    description = request.form.get('description')
+    date_from = request.form.get('date_from')
+    status = request.form.get('status')
+    technician_id = request.form.get('technician_id') or None
+    cost = request.form.get('cost') or None
+    notes = request.form.get('notes') or None
+
+    # Yeni component'leri al
+    new_component_ids = request.form.getlist('component_ids[]')
+
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        # 1. Eski component'leri geri ekle (stok geri kazanımı)
+        cur.execute("""
+            SELECT component_id, quantity
+            FROM maintenance_component
+            WHERE maintenance_id = %s
+        """, (maintenance_id,))
+        old_components = cur.fetchall()
+
+        for old_comp in old_components:
+            cur.execute("""
+                UPDATE components 
+                SET stock_quantity = stock_quantity + %s
+                WHERE component_id = %s
+            """, (old_comp['quantity'], old_comp['component_id']))
+
+        # 2. Eski component kayıtlarını sil
+        cur.execute("""
+            DELETE FROM maintenance_component
+            WHERE maintenance_id = %s
+        """, (maintenance_id,))
+
+        # 3. Maintenance kaydını güncelle
+        cur.execute("""
+            UPDATE maintenance
+            SET equipment_id = %s,
+                description = %s,
+                date_from = %s,
+                status = %s,
+                technician_id = %s,
+                cost = %s,
+                notes = %s
+            WHERE maintenance_id = %s
+        """, (equipment_id, description, date_from, status,
+              technician_id, cost, notes, maintenance_id))
+
+        # 4. Yeni component'leri ekle
+        for component_id in new_component_ids:
+            quantity = int(request.form.get(f'component_quantities_{component_id}', 1))
+
+            # Stok kontrolü
+            cur.execute("""
+                SELECT stock_quantity, component_name 
+                FROM components 
+                WHERE component_id = %s
+            """, (component_id,))
+            component = cur.fetchone()
+
+            if not component:
+                raise Exception(f"Component ID {component_id} bulunamadı!")
+
+            if component['stock_quantity'] < quantity:
+                raise Exception(
+                    f"{component['component_name']} için yeterli stok yok! "
+                    f"İstenen: {quantity}, Mevcut: {component['stock_quantity']}"
+                )
+
+            # maintenance_component tablosuna ekle
+            cur.execute("""
+                INSERT INTO maintenance_component 
+                (maintenance_id, component_id, quantity)
+                VALUES (%s, %s, %s)
+            """, (maintenance_id, component_id, quantity))
+
+            # Stoğu düşür
+            cur.execute("""
+                UPDATE components 
+                SET stock_quantity = stock_quantity - %s
+                WHERE component_id = %s
+            """, (quantity, component_id))
+
+        conn.commit()
+        flash('Maintenance record updated successfully!', 'success')
+        return redirect(url_for('maintenance_list'))
+
+    except Exception as e:
+        conn.rollback()
+        flash(f'Error updating maintenance: {str(e)}', 'error')
+        return redirect(url_for('maintenance_edit_form', maintenance_id=maintenance_id))
+
+    finally:
         cur.close()
         conn.close()
-        return render_template("maintenance_form.html", maintenance=maintenance, equipments=equipments, operators=operators)
+
+
+# === MAINTENANCE SİLME ===
+@app.route('/maintenance/delete/<int:maintenance_id>', methods=['POST'])
+def maintenance_delete(maintenance_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # Sadece farm_manager silebilir
+    if session.get('role') != 'farm_manager':
+        flash('Only farm managers can delete maintenance records!', 'error')
+        return redirect(url_for('maintenance_list'))
+
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    try:
+        # 1. Kullanılan component'leri stoka geri ekle
+        cur.execute("""
+            SELECT component_id, quantity
+            FROM maintenance_component
+            WHERE maintenance_id = %s
+        """, (maintenance_id,))
+        used_components = cur.fetchall()
+
+        for comp in used_components:
+            cur.execute("""
+                UPDATE components 
+                SET stock_quantity = stock_quantity + %s
+                WHERE component_id = %s
+            """, (comp['quantity'], comp['component_id']))
+
+        # 2. maintenance_component kayıtlarını sil
+        cur.execute("""
+            DELETE FROM maintenance_component
+            WHERE maintenance_id = %s
+        """, (maintenance_id,))
+
+        # 3. Maintenance kaydını sil
+        cur.execute("""
+            DELETE FROM maintenance
+            WHERE maintenance_id = %s
+        """, (maintenance_id,))
+
+        conn.commit()
+        flash('Maintenance record deleted successfully!', 'success')
+
+    except Exception as e:
+        conn.rollback()
+        flash(f'Error deleting maintenance: {str(e)}', 'error')
+
+    finally:
+        cur.close()
+        conn.close()
+
+    return redirect(url_for('maintenance_list'))
 
 
 @app.route("/maintenance/<int:maintenance_id>", methods=["GET"])
@@ -452,16 +793,16 @@ def maintenance_detail(maintenance_id):
     conn = connect_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-
     cur.execute("""
-        SELECT m.*, 
-               e.equipment_name, e.model, e.brand, e.serial_number, e.type as equipment_type,
-               o.operator_name, o.certificate_no, o.phone as operator_phone
-        FROM maintenance m
-        JOIN equipments e ON m.equipment_id = e.equipment_id
-        LEFT JOIN operators o ON m.operator_id = o.operator_id
-        WHERE m.maintenance_id = %s
+    SELECT m.*,
+    e.equipment_name, e.model, e.brand, e.serial_number, e.type as equipment_type,
+    t.user_name as technician_name
+    FROM maintenance m
+    JOIN equipments e ON m.equipment_id = e.equipment_id
+    LEFT JOIN users t ON m.technician_id = t.user_id
+    WHERE m.maintenance_id = %s
     """, (maintenance_id,))
+
     maintenance_record = cur.fetchone()
 
     if not maintenance_record:
@@ -955,19 +1296,28 @@ def queries_1():
     conn.close()
     return render_template("queries.html", results={"q1" : equipment_query})
 
+
 @app.route("/queries/2", methods=["GET"])
 def queries_2():
     conn = connect_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("SELECT o.operator_name as operator_name, o.certificate_no,"
-                "COUNT(m.maintenance_id) AS maintenance_count "
-                "FROM operators o LEFT JOIN maintenance m ON o.operator_id = m.operator_id "
-            "GROUP BY o.operator_id, o.operator_name ORDER BY o.operator_id LIMIT 10; ;")
-    operator_query = cur.fetchall()
+
+    cur.execute("""
+        SELECT 
+            u.user_name || ' ' || u.user_surname AS technician_full_name, 
+            u.email,
+            COUNT(m.maintenance_id) AS maintenance_count 
+        FROM users u 
+        LEFT JOIN maintenance m ON u.user_id = m.technician_id 
+        WHERE u.user_role = 'technician'
+        GROUP BY u.user_id, u.user_name, u.user_surname, u.email 
+        ORDER BY maintenance_count DESC 
+        LIMIT 10;
+    """)
+    technician_query = cur.fetchall()
     cur.close()
     conn.close()
-    return render_template("queries.html", results={"q2" : operator_query})
-
+    return render_template("queries.html", results={"q2": technician_query})
 @app.route("/queries/3", methods=["GET"])
 def queries_3():
     conn = connect_db()

@@ -3,107 +3,194 @@
 {% block title %}{{ 'Edit Maintenance Record' if maintenance else 'New Maintenance Record' }}{% endblock %}
 {% block topbar_title %}{{ 'Edit Maintenance Record' if maintenance else 'New Maintenance Record' }}{% endblock %}
 {% block topbar_sub %}{{ maintenance.maintenance_id if maintenance else 'Create new maintenance record' }}{% endblock %}
-{% block topbar_actions %}
-  <a href="/maintenance" class="btn">← Back</a>
+{% block topbar_actions %} <a href="/maintenance" class="btn">← Back</a>
 {% endblock %}
+<style>
+    /* Okları her koşulda gizle */
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button {
+        -webkit-appearance: none !important;
+        margin: 0 !important;
+    }
 
+    input[type=number] {
+        -moz-appearance: textfield !important; /* Firefox */
+        appearance: none !important;
+    }
+
+    /* Miktar kutusunun içindeki rakamı tam ortala ve okları engelle */
+    .qty-input {
+        pointer-events: none; /* Kutunun içine tıklanıp okların çıkmasını engeller, sadece butonlarla değişir */
+    }
+</style>
 {% block content %}
+
 <div style="max-width:640px;">
   <div class="card">
     <form method="POST"
           action="{{ '/maintenance/edit/' + maintenance.maintenance_id|string if maintenance else '/maintenance/new' }}">
 
-      <div class="form-group">
-        <label for="equipment_id">Equipment *</label>
-        <select id="equipment_id" name="equipment_id" required>
-          <option value="">Select equipment...</option>
-          {% for e in equipments %}
-            <option value="{{ e.equipment_id }}"
-              {{ 'selected' if (maintenance and maintenance.equipment_id == e.equipment_id)
-                              or request.args.get('equipment_id')|int == e.equipment_id }}>
-              {{ e.equipment_name }} / ({{ e.type }})
+```
+  <div class="form-group">
+    <label>Equipment *</label>
+    <select name="equipment_id" required>
+      <option value="">Select equipment...</option>
+      {% for e in equipments %}
+        <option value="{{ e.equipment_id }}"
+          {{ 'selected' if maintenance and maintenance.equipment_id == e.equipment_id }}>
+          {{ e.equipment_name }} ({{ e.type }})
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Description *</label>
+    <textarea name="description" required>{{ maintenance.description if maintenance else '' }}</textarea>
+  </div>
+
+  <div class="grid-2">
+    <div class="form-group">
+      <label>Date *</label>
+      <input type="date" name="date_from" value="{{ maintenance.date_from if maintenance else '' }}" required>
+    </div>
+
+    <div class="form-group">
+      <label>Status *</label>
+      <select name="status">
+        <option value="Pending">Pending</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Completed">Completed</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>Technician</label>
+    <select name="technician_id">
+      <option value="">Not Assigned</option>
+      {% for t in technicians %}
+        <option value="{{ t.user_id }}"
+          {{ 'selected' if maintenance and maintenance.technician_id == t.user_id }}>
+          {{ t.user_name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {% if components %}
+<div class="form-group">
+    <label>Add Components</label>
+    <select id="component_selector" onchange="handleComponentSelect(this)">
+        <option value="">Select a component to add...</option>
+        {% for c in components %}
+            <option value="{{ c.component_id }}"
+                    data-name="{{ c.component_name }}"
+                    data-stock="{{ c.stock_quantity }}"
+                    id="opt_{{ c.component_id }}">
+                {{ c.component_name }} (In Stock: {{ c.stock_quantity }})
             </option>
-          {% endfor %}
-        </select>
-      </div>
+        {% endfor %}
+    </select>
 
-      <div class="form-group">
-        <label for="description">Description *</label>
-        <textarea id="description" name="description" rows="3" required
-                  style="resize:vertical;">{{ maintenance.description if maintenance else '' }}</textarea>
-      </div>
+    <div id="selected_components_container" style="margin-top: 15px; display: none;">
+        <label style="font-size: 0.9em; color: #aaa; margin-bottom: 8px; display: block;">Selected Components</label>
+        <div id="component_list" style="display: grid; gap: 10px;">
+            </div>
+    </div>
+</div>
+{% endif %}
 
-      <div class="grid-2">
-        <div class="form-group">
-          <label for="date_from">Maintenance Date *</label>
-          <input type="date" id="date_from" name="date_from"
-                 value="{{ maintenance.date_from if maintenance else '' }}" required>
-        </div>
-        <div class="form-group">
-          <label for="status">Status *</label>
-          <select id="status" name="status" required>
-            <option value="Pending"     {{ 'selected' if maintenance and maintenance.status == 'Pending' }}>Pending</option>
-            <option value="In Progress" {{ 'selected' if maintenance and maintenance.status == 'In Progress' }}>In Progress</option>
-            <option value="Completed"   {{ 'selected' if maintenance and maintenance.status == 'Completed' }}>Completed</option>
-          </select>
-        </div>
-      </div>
+  <div class="form-group">
+    <label>Cost</label>
+    <input type="number" name="cost" value="{{ maintenance.cost if maintenance else '' }}">
+  </div>
 
-      {% if session.role == 'farm_manager' %}
-      <div class="grid-2">
-        <div class="form-group">
-          <label for="user_id">Technician</label>
-          <select id="user_id" name="user_id">
-            <option value="">Not Assigned</option>
-            {% for tech in technicians %}
-              <option value="{{ tech.user_id }}"
-                {{ 'selected' if maintenance and maintenance.technician_id == tech.user_id }}>
-                {{ tech.user_name }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="cost">Cost (₺)</label>
-          <input type="number" id="cost" name="cost" step="0.01" min="0"
-                 value="{{ maintenance.cost if maintenance else '' }}">
-        </div>
-      </div>
-      {% else %}
-      <input type="hidden" name="technician_id" value="{{ session.user_id }}">
-      {% endif %}
+  <div class="form-group">
+    <label>Notes</label>
+    <textarea name="notes">{{ maintenance.notes if maintenance else '' }}</textarea>
+  </div>
 
-      {% if session.role == 'farm_manager' and components %}
-      <div class="form-group">
-        <label>Components Used</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:180px;overflow-y:auto;
-                    padding:10px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);">
-          {% for c in components %}
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;
-                        text-transform:none;letter-spacing:0;color:var(--text2);cursor:pointer;">
-            <input type="checkbox" name="component_ids" value="{{ c.component_id }}"
-              {{ 'checked' if maintenance and c.component_id in selected_components }}
-              style="width:auto;accent-color:var(--purple);">
-            {{ c.component_name }}
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
+  <button type="submit" class="btn btn-primary">
+    {{ 'Update' if maintenance else 'Create' }}
+  </button>
 
-      <div class="form-group">
-        <label for="notes">Notes</label>
-        <textarea id="notes" name="notes" rows="2"
-                  style="resize:vertical;">{{ maintenance.notes if maintenance else '' }}</textarea>
-      </div>
+</form>
 
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
-        <a href="/maintenance" class="btn">Cancel</a>
-        <button type="submit" class="btn btn-primary">
-          {{ 'Save Changes' if maintenance else 'Create Maintenance Record' }}
-        </button>
-      </div>
-    </form>
+
   </div>
 </div>
+    <script>
+    function handleComponentSelect(selectElement) {
+    const componentId = selectElement.value;
+    if (!componentId) return;
+
+    const option = selectElement.options[selectElement.selectedIndex];
+    const name = option.getAttribute('data-name');
+    const stock = option.getAttribute('data-stock');
+
+    addComponentToList(componentId, name, stock);
+
+    // Seçilen öğeyi menüden temizle ve gizle
+    selectElement.value = "";
+    option.style.display = "none";
+}
+
+function addComponentToList(id, name, stock) {
+    const container = document.getElementById('selected_components_container');
+    const list = document.getElementById('component_list');
+
+    // Konteynırı görünür yap
+    container.style.display = "block";
+
+    const itemHtml = `
+    <div class="component-card selected" id="row_${id}"
+         style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid #444; border-radius: 8px; margin-bottom: 8px;">
+
+        <input type="hidden" name="component_ids[]" value="${id}">
+        <div style="font-weight: bold; color: #fff;">${name}</div>
+
+        <div class="qty-wrapper" style="display: flex; align-items: center; gap: 5px; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; border: 1px solid #555;">
+            <span style="color: #aaa; font-size: 0.75em; font-weight: bold; margin-right: 5px;">QTY</span>
+
+            <button type="button" class="btn-step" onclick="adjustQty('qty_${id}', -1)"
+                    style="width: 26px; height: 26px; border: 1px solid #666; background: #333; color: white; border-radius: 4px; cursor: pointer;">-</button>
+
+            <input type="text" id="qty_${id}" name="component_quantities_${id}"
+                   value="1" min="1" max="${stock}" readonly
+                   style="width: 40px; height: 26px; text-align: center; background: #fff; color: #000; border: none; font-weight: bold; border-radius: 3px; font-size: 0.9em;">
+
+            <button type="button" class="btn-step" onclick="adjustQty('qty_${id}', 1, ${stock})"
+                    style="width: 26px; height: 26px; border: 1px solid #666; background: #333; color: white; border-radius: 4px; cursor: pointer;">+</button>
+
+            <button type="button" onclick="removeComponentFromList('${id}')"
+                    style="margin-left: 8px; color: #ff5555; background: none; border: none; font-size: 1.4em; cursor: pointer; line-height: 1;">&times;</button>
+        </div>
+    </div>
+`;
+
+    list.insertAdjacentHTML('beforeend', itemHtml);
+}
+
+function removeComponentFromList(id) {
+    document.getElementById(`row_${id}`).remove();
+
+    // Menüdeki seçeneği tekrar görünür yap
+    document.getElementById(`opt_${id}`).style.display = "block";
+
+    // Eğer hiç parça kalmadıysa konteynırı gizle
+    const list = document.getElementById('component_list');
+    if (list.children.length === 0) {
+        document.getElementById('selected_components_container').style.display = "none";
+    }
+}
+
+function adjustQty(id, delta, max = 999) {
+    const input = document.getElementById(id);
+    let val = parseInt(input.value) + delta;
+    if (val >= 1 && val <= max) {
+        input.value = val;
+    }
+}
+    </script>
 {% endblock %}

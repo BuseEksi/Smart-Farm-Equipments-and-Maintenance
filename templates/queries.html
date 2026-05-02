@@ -5,55 +5,69 @@
 {% block topbar_sub %}Reporting and analytics{% endblock %}
 
 {% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<!-- Q1 -->
 <div class="card mb-16">
   <div class="card-title">
-    <span><span class="text-mono text-dim" style="margin-right:8px;"></span>Most maintained equipment</span>
+    <span>Most maintained equipment</span>
     <a href="/queries/1" class="btn btn-sm">Run →</a>
   </div>
   <p style="font-size:11px;color:var(--text3);font-family:var(--mono);">Equipment list sorted by total number of maintenance records</p>
+
   {% if results.q1 %}
+  <div class="chart-container" style="margin-top:20px; height:250px;">
+    <canvas id="maintCountChart"></canvas>
+  </div>
+
   <div class="table-wrap" style="margin-top:12px;">
     <table>
-      <thead><tr><th>#</th><th>Equipment</th><th>Type</th><th>Maintenance Count</th></tr></thead>
+      <thead><tr><th>#</th><th>Equipment</th><th>Maintenance Count</th></tr></thead>
       <tbody>
         {% for row in results.q1 %}
         <tr>
           <td class="text-mono text-dim">{{ loop.index }}</td>
-          <td><a href="/equipment/{{ row.equipment_id }}" style="color:var(--purple2);text-decoration:none;">{{ row.equipment_name }}</a></td>
-          <td class="text-muted">{{ row.type or '—' }}</td>
+          <td>{{ row.equipment_name }}</td>
           <td class="text-mono" style="color:var(--purple);">{{ row.maintenance_count }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+
+  <script>
+    new Chart(document.getElementById('maintCountChart'), {
+      type: 'bar',
+      data: {
+        labels: [{% for row in results.q1 %}"{{ row.equipment_name }}",{% endfor %}],
+        datasets: [{
+          label: 'Maintenance Count',
+          data: [{% for row in results.q1 %}{{ row.maintenance_count }},{% endfor %}],
+          backgroundColor: 'rgba(139, 92, 246, 0.6)',
+          borderColor: '#8b5cf6',
+          borderWidth: 1
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+  </script>
   {% endif %}
 </div>
 
-<!-- Q2 -->
 <div class="card mb-16">
   <div class="card-title">
-    <span><span class="text-mono text-dim" style="margin-right:8px;"></span>Maintenance count per operator</span>
-    <a href="/queries/2" class="btn btn-sm">Run →</a>
+    <span>Maintenance count per technician</span> <a href="/queries/2" class="btn btn-sm">Run →</a>
   </div>
-  <p style="font-size:11px;color:var(--text3);font-family:var(--mono);">Number of maintenance tasks performed by each operator</p>
+  <p style="font-size:11px;color:var(--text3);font-family:var(--mono);">Number of maintenance tasks performed by each technician</p>
+
   {% if results.q2 %}
   <div class="table-wrap" style="margin-top:12px;">
     <table>
-      <thead>
-        <tr>
-          <th>Operator</th>
-          <th>Certificate No.</th>
-          <th>Maintenance Count</th>
-        </tr>
-      </thead>
+      <thead><tr><th>Technician Name</th><th>Email</th><th>Total Tasks</th></tr></thead>
       <tbody>
         {% for row in results.q2 %}
         <tr>
-          <td style="color:var(--text);">{{ row.operator_name }}</td>
-          <td class="text-mono text-dim" style="font-size:11px;">{{ row.certificate_no or '—' }}</td>
+          <td>{{ row.technician_full_name }}</td>
+          <td class="text-dim">{{ row.email }}</td>
           <td class="text-mono" style="color:var(--purple);">{{ row.maintenance_count }}</td>
         </tr>
         {% endfor %}
@@ -63,7 +77,6 @@
   {% endif %}
 </div>
 
-<!-- Q3 (farm_manager only) -->
 {% if session.role == 'farm_manager' %}
 <div class="card mb-16">
   <div class="card-title">
@@ -116,86 +129,71 @@
   {% endif %}
 </div>
 
-<!-- Q5 (farm_manager only) -->
+
+
 {% if session.role == 'farm_manager' %}
 <div class="card mb-16">
   <div class="card-title">
     <span>Monthly maintenance cost trend</span>
     <a href="/queries/5" class="btn btn-sm">Run →</a>
   </div>
-  <p style="font-size:11px;color:var(--text3);font-family:var(--mono);">Total monthly maintenance cost for the last 12 months</p>
 
   {% if results.q5 %}
   <div class="chart-container" style="margin-top:20px; height:300px;">
     <canvas id="costTrendChart"></canvas>
   </div>
 
-  <div class="table-wrap" style="margin-top:12px; max-height: 300px; overflow-y: auto;">
+  <div class="table-wrap" style="margin-top:12px;">
     <table>
-      <thead><tr><th>Month</th><th>Maintenance Count</th><th>Total Cost</th></tr></thead>
+      <thead><tr><th>Month</th><th>Count</th><th>Total Cost</th></tr></thead>
       <tbody>
         {% for row in results.q5 %}
         <tr>
-          <td class="text-mono text-dim">{{ row.month }}</td>
-          <td class="text-mono">{{ row.count }}</td>
-          <td class="text-mono" style="color:var(--amber);">{{ '₺{:,.2f}'.format(row.total_cost) if row.total_cost else '—' }}</td>
+          <td>{{ row.month }}</td>
+          <td>{{ row.count }}</td>
+          <td style="color:var(--amber);">₺{{ "{:,.2f}".format(row.total_cost or 0) }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    const labels = [{% for row in results.q5 %}"{{ row.month }}",{% endfor %}];
-    const dataPoints = [{% for row in results.q5 %}{{ row.total_cost or 0 }},{% endfor %}];
-
-    const ctx = document.getElementById('costTrendChart').getContext('2d');
-    new Chart(ctx, {
+    new Chart(document.getElementById('costTrendChart'), {
       type: 'line',
       data: {
-        labels: labels,
+        labels: [{% for row in results.q5 %}"{{ row.month }}",{% endfor %}],
         datasets: [{
           label: 'Total Cost (₺)',
-          data: dataPoints,
+          data: [{% for row in results.q5 %}{{ row.total_cost or 0 }},{% endfor %}],
           borderColor: '#6366f1',
-          backgroundColor: 'rgba(99, 102, 241, 0.1)',
-          borderWidth: 2,
           tension: 0.3,
           fill: true,
-          pointRadius: 4
+          backgroundColor: 'rgba(99, 102, 241, 0.1)'
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: { beginAtZero: true }
-        }
-      }
+      options: { responsive: true, maintainAspectRatio: false }
     });
   </script>
   {% endif %}
 </div>
 {% endif %}
 
-<!-- Q6 -->
 <div class="card mb-16">
   <div class="card-title">
-    <span><span class="text-mono text-dim" style="margin-right:8px;"></span>Average maintenance duration by equipment type</span>
+    <span>Avg. Duration by Type</span>
     <a href="/queries/6" class="btn btn-sm">Run →</a>
   </div>
-  <p style="font-size:11px;color:var(--text3);font-family:var(--mono);">Average maintenance duration (days) for each equipment type</p>
   {% if results.q6 %}
-  <div class="table-wrap" style="margin-top:12px;">
+  <div class="table-wrap">
     <table>
-      <thead><tr><th>Equipment Type</th><th>Maintenance Count</th><th>Avg. Duration (days)</th></tr></thead>
+      <thead><tr><th>Type</th><th>Count</th><th>Avg. Days</th></tr></thead>
       <tbody>
         {% for row in results.q6 %}
         <tr>
-          <td style="color:var(--text);">{{ row.type }}</td>
-          <td class="text-mono">{{ row.count }}</td>
-          <td class="text-mono" style="color:var(--purple);">{{ "%.1f"|format(row.avg_days) if row.avg_days else '—' }}</td>
+          <td>{{ row.type }}</td>
+          <td>{{ row.count }}</td>
+          <td>{{ "%.1f"|format(row.avg_days) }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -238,7 +236,7 @@
     <td class="text-mono text-dim" style="font-size:11px;">{{ row.required_certification or '—' }}</td>
     <td class="text-mono text-dim" style="font-size:11px;">{{ row.time_period or '—' }}</td>
     <td>
-      {% if row.compliance_status == 'No Certificate' %}
+        {% if row.compliance_status == 'No Certificate' %}
         <span style="color:var(--red,#e24b4a);">No Certificate</span>
       {% elif row.compliance_status == 'Expired' %}
         <span style="color:var(--red,#e24b4a);">Expired</span>
@@ -256,10 +254,5 @@
   {% endif %}
 </div>
 {% endif %}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-
-
-
 
 {% endblock %}
