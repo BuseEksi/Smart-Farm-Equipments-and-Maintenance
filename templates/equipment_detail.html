@@ -59,6 +59,15 @@
       </tr>
       {% endif %}
     </table>
+  {% if session.role == 'operator' %}
+    <form method="POST" action="/assignments/request/{{ equipment.equipment_id }}">
+    <input type="hidden" name="next" value="detail">
+    <button type="submit" class="btn btn-primary"
+            onclick="return confirm('Request assignment for this equipment?');">
+        Request Assignment
+    </button>
+    </form>
+  {% endif %}
   </div>
 
   <!-- Summary statistics -->

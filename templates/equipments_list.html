@@ -70,12 +70,22 @@
           <td>
             <div style="display:flex;gap:6px;">
               <a href="/equipment/{{ e.equipment_id }}" class="btn btn-sm">Detail</a>
+                {% if session.role == 'operator' %}
+                    <form method="POST" action="/assignments/request/{{ e.equipment_id }}">
+                    <input type="hidden" name="next" value="list">
+                     <button type="submit" class="btn btn-primary btn-sm"
+                             onclick="return confirm('Request assignment for this equipment?');">
+                        Request Assignment
+                    </button>
+                    </form>
+                {% endif %}
               {% if session.role == 'farm_manager' %}
                 <a href="/equipment/edit/{{ e.equipment_id }}" class="btn btn-sm">Edit</a>
                 <form method="POST" action="/equipment/delete/{{ e.equipment_id }}"
                       onsubmit="return confirm('Are you sure you want to delete this equipment?');"
                       style="display:inline;">
                   <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+
                 </form>
               {% endif %}
             </div>

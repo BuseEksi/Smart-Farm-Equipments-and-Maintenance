@@ -166,31 +166,6 @@
   </div>
 </div>
 
-<div class="card">
-  <div class="card-title">Advanced Queries</div>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-    {% set queries = [
-      ('Q1', 'Most Maintained Equipment',           '/queries/1'),
-      ('Q2', 'Maintenance Count per Operator',      '/queries/2'),
-      ('Q3', 'Highest Cost Maintenance Records',    '/queries/3'),
-      ('Q4', 'Most Used Components',                '/queries/4'),
-      ('Q5', 'Monthly Maintenance Cost Trend',      '/queries/5'),
-      ('Q6', 'Avg. Maintenance Duration by Type',   '/queries/6'),
-    ] %}
-    {% for num, label, url in queries %}
-    <a href="{{ url }}" style="
-      display:flex; align-items:center; gap:10px; padding:10px 14px;
-      background:var(--bg); border:1px solid var(--border);
-      border-radius:var(--radius); text-decoration:none;
-      transition:border-color .15s, background .15s;
-      " onmouseover="this.style.borderColor='var(--purple2)';this.style.background='var(--bg3)'"
-         onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--bg)'">
-      <span style="font-family:var(--mono);font-size:9px;color:var(--text3);min-width:20px;">{{ num }}</span>
-      <span style="font-size:12px;color:var(--text2);">{{ label }}</span>
-      <span style="margin-left:auto;font-size:11px;color:var(--text3);">→</span>
-    </a>
-    {% endfor %}
-  </div>
-</div>
+
 
 {% endblock %}

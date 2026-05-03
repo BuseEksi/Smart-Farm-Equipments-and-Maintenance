@@ -49,12 +49,18 @@
       <i class="icon">⚙</i> Equipment
     </a>
 
-    {% if session.role == 'farm_manager' or session.role == 'technician' %}
+    {% if session.role == 'farm_manager' %}
     <a href="/maintenance" class="nav-link {% if active_page == 'maintenance' %}active{% endif %}">
       <i class="icon">🔧</i> Maintenance
       {% if pending_count and pending_count > 0 %}
         <span class="nav-badge warn">{{ pending_count }}</span>
       {% endif %}
+    </a>
+    {% endif %}
+
+    {% if session.role == 'technician' %}
+    <a href="/my-maintenance" class="nav-link {% if active_page == 'my-maintenance' %}active{% endif %}">
+      <i class="icon">🔧</i> My Tasks
     </a>
     {% endif %}
 
@@ -79,6 +85,8 @@
       <i class="icon">◈</i> My Assignments
     </a>
     {% endif %}
+
+
 
   </div>
 

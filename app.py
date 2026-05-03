@@ -144,13 +144,13 @@ def signup():
 @app.route('/signup', methods=['POST'])
 def signup_post():
     conn = connect_db()
-    cur = conn.cursor()
-    name= request.form['name']
-    surname= request.form['surname']
-    password= request.form['password']
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)  # ← eklendi
+    name = request.form['name']
+    surname = request.form['surname']
+    password = request.form['password']
     hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-    role= "operator"
-    email= request.form['email']
+    role = "operator"
+    email = request.form['email']
 
     cur.execute("SELECT * FROM users WHERE email = %s", (email,))
     exists = cur.fetchone()
@@ -159,19 +159,22 @@ def signup_post():
         cur.close()
         conn.close()
         return redirect(url_for('login'))
-    else:
-        cur.execute("INSERT INTO users (user_name, user_surname, user_role, email, password_hash) "
-                    "VALUES (%s, %s, %s, %s, %s) RETURNING user_id",
-                    (name, surname,  role, email, hashed_password))
-        new_user_id = cur.fetchone()['user_id']
 
-        cur.execute(
-            "INSERT INTO operators (operator_name, operator_id) VALUES (%s, %s)",
-            (f"{name} {surname}", new_user_id))
-        conn.commit()
-        cur.close()
-        conn.close()
-        return redirect(url_for('login'))
+    cur.execute(
+        "INSERT INTO users (user_name, user_surname, user_role, email, password_hash) "
+        "VALUES (%s, %s, %s, %s, %s) RETURNING user_id",
+        (name, surname, role, email, hashed_password))
+    new_user_id = cur.fetchone()['user_id']
+
+    cur.execute(
+        "INSERT INTO operators (operator_id, operator_name) VALUES (%s, %s)",
+        (new_user_id, f"{name} {surname}"))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash("Account created successfully. Please log in.")
+    return redirect(url_for('login'))
 @app.route('/', methods=['GET'])
 def login():
     return render_template("login.html")
@@ -876,29 +879,50 @@ def maintenance_detail(maintenance_id):
 def components():
     page = request.args.get('page', 1, type=int)
     per_page = 10
+    q = request.args.get('q', '').strip()
+    category_filter = request.args.get('category', '')
 
     conn = connect_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    cur.execute("SELECT COUNT(*) AS cnt  FROM components")
+    where_conditions = []
+    params = []
+
+    if q:
+        where_conditions.append("component_name ILIKE %s")
+        params.append(f"%{q}%")
+
+    if category_filter:
+        where_conditions.append("category = %s")
+        params.append(category_filter)
+
+    where_clause = ("WHERE " + " AND ".join(where_conditions)) if where_conditions else ""
+
+    cur.execute(f"SELECT COUNT(*) AS cnt FROM components {where_clause}", params)
     total = cur.fetchone()['cnt']
 
-
     offset = (page - 1) * per_page
-    cur.execute("SELECT * FROM components ORDER BY component_id DESC LIMIT %s OFFSET %s", (per_page, offset))
-    components = cur.fetchall()
+    cur.execute(f"SELECT * FROM components {where_clause} ORDER BY component_id DESC LIMIT %s OFFSET %s",
+                params + [per_page, offset])
+    all_components = cur.fetchall()
+
+
+    cur.execute("SELECT DISTINCT category FROM components WHERE category IS NOT NULL ORDER BY category")
+    categories = [row['category'] for row in cur.fetchall()]
 
     cur.close()
     conn.close()
 
-    total_pages = (total + per_page - 1) // per_page
+    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
 
     return render_template("components_list.html",
-                           components=components,
+                           components=all_components,
                            total=total,
                            current_page=page,
-                           total_pages=total_pages
-                           )
+                           total_pages=total_pages,
+                           q=q,
+                           category_filter=category_filter,
+                           categories=categories)
 
 @app.route("/components/new", methods=["GET"])
 def component_new():
@@ -1089,6 +1113,73 @@ def operator_delete(operator_id):
         return redirect(url_for('operators'))
     else:
         return redirect(url_for('login'))
+
+
+@app.route("/assignments/request/<int:equipment_id>", methods=["POST"])
+def assignment_request(equipment_id):
+    if session.get("role") != "operator":
+        return redirect(url_for('login'))
+
+    op_id = session.get("user_id")
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    cur.execute("""
+        SELECT assignment_id FROM assignments
+        WHERE equipment_id = %s AND op_id = %s AND (approval IS NULL OR approval = TRUE)
+    """, (equipment_id, op_id))
+    existing = cur.fetchone()
+
+    if existing:
+        flash("You already have an active or pending assignment for this equipment.", "error")
+    else:
+        cur.execute("""
+            INSERT INTO assignments (equipment_id, op_id, approval)
+            VALUES (%s, %s, NULL)
+        """, (equipment_id, op_id))
+        conn.commit()
+        flash("Assignment request submitted.", "success")
+
+    cur.close()
+    conn.close()
+
+
+    next_page = request.form.get("next", "equipment")
+    if next_page == "detail":
+        return redirect(url_for('equipment_detail', equipment_id=equipment_id))
+    return redirect(url_for('equipment'))
+
+
+
+@app.route("/assignments/approve/<int:assignment_id>", methods=["POST"])
+def assignment_approve(assignment_id):
+    if session.get("role") != "farm_manager":
+        return redirect(url_for('login'))
+
+    conn = connect_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE assignments SET approval = TRUE WHERE assignment_id = %s", (assignment_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash("Assignment approved.", "success")
+    return redirect(url_for('assignments'))
+
+
+
+@app.route("/assignments/reject/<int:assignment_id>", methods=["POST"])
+def assignment_reject(assignment_id):
+    if session.get("role") != "farm_manager":
+        return redirect(url_for('login'))
+
+    conn = connect_db()
+    cur = conn.cursor()
+    cur.execute("UPDATE assignments SET approval = FALSE WHERE assignment_id = %s", (assignment_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    flash("Assignment rejected.", "error")
+    return redirect(url_for('assignments'))
 @app.route("/technicians")
 def technicians():
     if session.get("role") == 'farm_manager':
@@ -1148,6 +1239,154 @@ def delete_technician(technician_id):
     conn.close()
     flash("Technician deleted successfully.", "success")
     return redirect("/technicians")
+
+@app.route("/my-maintenance", methods=["GET"])
+def my_maintenance():
+    if session.get("role") != "technician":
+        return redirect(url_for('login'))
+
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    offset = (page - 1) * per_page
+    q = request.args.get('q', '').strip()
+    status_filter = request.args.get('status')
+
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    where_conditions = ["m.technician_id = %s"]
+    params = [session.get("user_id")]
+
+    if q:
+        where_conditions.append("(e.equipment_name ILIKE %s OR m.description ILIKE %s)")
+        params.extend([f"%{q}%", f"%{q}%"])
+
+    if status_filter:
+        where_conditions.append("m.status = %s")
+        params.append(status_filter)
+
+    where_clause = "WHERE " + " AND ".join(where_conditions)
+
+    cur.execute(f"""
+        SELECT COUNT(*) AS cnt
+        FROM maintenance m
+        LEFT JOIN equipments e ON m.equipment_id = e.equipment_id
+        {where_clause}
+    """, params)
+    total = cur.fetchone()["cnt"]
+    total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+
+    cur.execute(f"""
+        SELECT m.*, e.equipment_name, e.type AS equipment_type
+        FROM maintenance m
+        LEFT JOIN equipments e ON m.equipment_id = e.equipment_id
+        {where_clause}
+        ORDER BY m.date_from DESC
+        LIMIT %s OFFSET %s
+    """, params + [per_page, offset])
+    maintenances = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template("technician_maintenance_list.html",
+                           maintenance=maintenances,
+                           total=total,
+                           current_page=page,
+                           total_pages=total_pages,
+                           q=q,
+                           status_filter=status_filter)
+
+
+@app.route("/my-maintenance/edit/<int:maintenance_id>", methods=["GET", "POST"])
+def my_maintenance_edit(maintenance_id):
+    if session.get("role") != "technician":
+        return redirect(url_for('login'))
+
+    conn = connect_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+
+    cur.execute("SELECT * FROM maintenance WHERE maintenance_id = %s AND technician_id = %s",
+                (maintenance_id, session.get("user_id")))
+    maintenance = cur.fetchone()
+
+    if not maintenance:
+        flash("Record not found or you don't have permission to edit it.", "error")
+        cur.close()
+        conn.close()
+        return redirect(url_for('my_maintenance'))
+
+    if request.method == "POST":
+        status = request.form.get("status")
+        date_from = request.form.get("date_from")
+        date_to = request.form.get("date_to") or None
+        cost = request.form.get("cost") or None
+        description = request.form.get("description")
+        notes = request.form.get("notes") or None
+
+        new_component_ids = request.form.getlist("component_ids[]")
+
+        try:
+
+            cur.execute("SELECT component_id, quantity FROM maintenance_component WHERE maintenance_id = %s",
+                        (maintenance_id,))
+            old_components = cur.fetchall()
+            for old in old_components:
+                cur.execute("UPDATE components SET stock_quantity = stock_quantity + %s WHERE component_id = %s",
+                            (old["quantity"], old["component_id"]))
+
+            cur.execute("DELETE FROM maintenance_component WHERE maintenance_id = %s", (maintenance_id,))
+
+            cur.execute("""
+                UPDATE maintenance
+                SET status = %s, date_from = %s, date_to = %s,
+                    cost = %s, description = %s, notes = %s
+                WHERE maintenance_id = %s
+            """, (status, date_from, date_to, cost, description, notes, maintenance_id))
+
+            for component_id in new_component_ids:
+                quantity = int(request.form.get(f"component_quantities_{component_id}", 1))
+                cur.execute("SELECT stock_quantity, component_name FROM components WHERE component_id = %s",
+                            (component_id,))
+                component = cur.fetchone()
+                if component["stock_quantity"] < quantity:
+                    raise Exception(f"{component['component_name']} için yeterli stok yok!")
+                cur.execute("INSERT INTO maintenance_component (maintenance_id, component_id, quantity) VALUES (%s, %s, %s)",
+                            (maintenance_id, component_id, quantity))
+                cur.execute("UPDATE components SET stock_quantity = stock_quantity - %s WHERE component_id = %s",
+                            (quantity, component_id))
+
+            conn.commit()
+            flash("Maintenance record updated successfully.", "success")
+            return redirect(url_for('my_maintenance'))
+
+        except Exception as e:
+            conn.rollback()
+            flash(f"Error: {str(e)}", "error")
+
+
+    cur.execute("SELECT * FROM equipments ORDER BY equipment_name")
+    equipments = cur.fetchall()
+
+    cur.execute("SELECT component_id, component_name, stock_quantity FROM components ORDER BY component_name")
+    components = cur.fetchall()
+
+    cur.execute("SELECT component_id, quantity FROM maintenance_component WHERE maintenance_id = %s", (maintenance_id,))
+    used = cur.fetchall()
+    selected_components = [c["component_id"] for c in used]
+    selected_quantities = {c["component_id"]: c["quantity"] for c in used}
+
+    cur.close()
+    conn.close()
+
+    return render_template("maintenance_form.html",
+                           maintenance=maintenance,
+                           equipments=equipments,
+                           technicians=[],
+                           components=components,
+                           selected_components=selected_components,
+                           selected_quantities=selected_quantities)
 
 
 @app.route("/assignments", methods=["GET"])

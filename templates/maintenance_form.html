@@ -13,7 +13,6 @@
     <form method="POST"
           action="{{ '/maintenance/edit/' + maintenance.maintenance_id|string if maintenance else '/maintenance/new' }}">
 
-```
   <div class="form-group">
     <label>Equipment *</label>
     <select name="equipment_id" required>
