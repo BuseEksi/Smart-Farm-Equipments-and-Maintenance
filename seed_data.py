@@ -1,7 +1,7 @@
 import psycopg2
 import random
 from faker import Faker
-from datetime import timedelta, date
+from datetime import timedelta
 from werkzeug.security import generate_password_hash
 
 fake = Faker('en_US')
@@ -10,20 +10,18 @@ random.seed(42)
 # ─── DB CONNECTION ────────────────────────────────────────────────
 conn = psycopg2.connect(
     host="localhost",
-    database="farm_eq_maintenance",
+    database="farm_final",
     user="buseeksi",
     password="823607"
 )
 cur = conn.cursor()
-tech_ids = []
-
 print("Connected successfully, inserting data...")
 
 # ─── ENUM VALUES ──────────────────────────────────────────────────
-EQUIPMENT_STATUSES = ['Active', 'Maintenance', 'Broken']
-MAINTENANCE_STATUSES = ['Pending', 'In Progress', 'Completed']
-EQUIPMENT_TYPES = ['Agriculture', 'Harvesting', 'Irrigation', 'Pest Control', 'Transportation', 'Other']
-CERTIFICATE_TYPES = ['Class A', 'Class B', 'Class C', 'Forklift', 'Pesticide', 'Heavy Machinery']
+EQUIPMENT_STATUSES   = ['Active', 'Maintenance', 'Broken']
+MAINTENANCE_STATUSES = ['Pending', 'In Progress', 'Completed', 'Cancelled']
+EQUIPMENT_TYPES      = ['Agriculture', 'Harvesting', 'Irrigation', 'Pest Control', 'Transportation', 'Other']
+CERTIFICATE_TYPES    = ['Class A', 'Class B', 'Class C', 'Forklift', 'Pesticide', 'Heavy Machinery']
 
 BRANDS = ['John Deere', 'CLAAS', 'New Holland', 'Case IH', 'Fendt', 'Massey Ferguson',
           'Kubota', 'Deutz-Fahr', 'Valtra', 'Same']
@@ -38,72 +36,40 @@ EQUIPMENT_NAMES = {
 }
 
 COMPONENT_NAMES = [
-    ('Engine Oil Filter', 'Engine'),
-    ('Air Filter', 'Engine'),
-    ('Fuel Filter', 'Engine'),
-    ('V-Belt', 'Transmission'),
-    ('Hydraulic Filter', 'Hydraulics'),
-    ('Hydraulic Pump', 'Hydraulics'),
-    ('Brake Pad', 'Brakes'),
-    ('Front Tire', 'Wheels'),
-    ('Rear Tire', 'Wheels'),
-    ('Battery', 'Electrical'),
-    ('Alternator', 'Electrical'),
-    ('Starter Motor', 'Electrical'),
-    ('Coolant Water Pump', 'Cooling'),
-    ('Thermostat', 'Cooling'),
-    ('Radiator', 'Cooling'),
-    ('Clutch Disc', 'Transmission'),
-    ('Gearbox Oil', 'Transmission'),
-    ('Differential Oil', 'Transmission'),
-    ('Piston Ring Set', 'Engine'),
-    ('Spark Plugs', 'Engine'),
-    ('Fuel Injector', 'Engine'),
-    ('Power Steering Pump', 'Steering'),
-    ('Tie Rod End', 'Steering'),
-    ('Shock Absorber', 'Suspension'),
-    ('Harvester Blade', 'Harvesting'),
-    ('Threshing Drum', 'Harvesting'),
-    ('Sieve Set', 'Harvesting'),
-    ('Irrigation Nozzle', 'Irrigation'),
-    ('Drip Hose Set', 'Irrigation'),
-    ('Sprayer Nozzle', 'Pest Control'),
+    ('Engine Oil Filter', 'Engine'),    ('Air Filter', 'Engine'),
+    ('Fuel Filter', 'Engine'),          ('V-Belt', 'Transmission'),
+    ('Hydraulic Filter', 'Hydraulics'), ('Hydraulic Pump', 'Hydraulics'),
+    ('Brake Pad', 'Brakes'),            ('Front Tire', 'Wheels'),
+    ('Rear Tire', 'Wheels'),            ('Battery', 'Electrical'),
+    ('Alternator', 'Electrical'),       ('Starter Motor', 'Electrical'),
+    ('Coolant Water Pump', 'Cooling'),  ('Thermostat', 'Cooling'),
+    ('Radiator', 'Cooling'),            ('Clutch Disc', 'Transmission'),
+    ('Gearbox Oil', 'Transmission'),    ('Differential Oil', 'Transmission'),
+    ('Piston Ring Set', 'Engine'),      ('Spark Plugs', 'Engine'),
+    ('Fuel Injector', 'Engine'),        ('Power Steering Pump', 'Steering'),
+    ('Tie Rod End', 'Steering'),        ('Shock Absorber', 'Suspension'),
+    ('Harvester Blade', 'Harvesting'),  ('Threshing Drum', 'Harvesting'),
+    ('Sieve Set', 'Harvesting'),        ('Irrigation Nozzle', 'Irrigation'),
+    ('Drip Hose Set', 'Irrigation'),    ('Sprayer Nozzle', 'Pest Control'),
 ]
 
 MAINTENANCE_DESCRIPTIONS = [
-    'Routine maintenance performed',
-    'Engine fault repaired',
-    'Oil change completed',
-    'Brake system inspection',
-    'Hydraulic system service',
-    'Electrical system check',
-    'Tire replacement',
-    'Filter replacement',
-    'Periodic scheduled maintenance',
-    'Emergency breakdown repair',
-    'Pre-season service',
-    'Cooling system flush',
-    'Drivetrain maintenance',
-    'Cutting blades replaced',
-    'Irrigation system service',
-    'Sprayer equipment cleaning',
-    'Full system diagnostic',
-    'Fuel system cleaning',
-    'Transmission overhaul',
-    'Battery and charging system check',
-
+    'Routine maintenance performed', 'Engine fault repaired', 'Oil change completed',
+    'Brake system inspection', 'Hydraulic system service', 'Electrical system check',
+    'Tire replacement', 'Filter replacement', 'Periodic scheduled maintenance',
+    'Emergency breakdown repair', 'Pre-season service', 'Cooling system flush',
+    'Drivetrain maintenance', 'Cutting blades replaced', 'Irrigation system service',
+    'Sprayer equipment cleaning', 'Full system diagnostic', 'Fuel system cleaning',
+    'Transmission overhaul', 'Battery and charging system check',
 ]
 
-
-
-#-------------------------------------------------------------------
 # ─── 1. FARM MANAGER ──────────────────────────────────────────────
 print("Inserting farm manager...")
 cur.execute("""
     INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
     VALUES (%s, %s, %s, %s, %s)
     ON CONFLICT (email) DO NOTHING
-""", ('farm_manager', 'User', 'farm_manager', 'admin@farm.com', generate_password_hash('admin123')))
+""", ('Admin', 'User', 'farm_manager', 'admin@farm.com', generate_password_hash('admin123')))
 conn.commit()
 
 # ─── 2. TECHNICIANS ───────────────────────────────────────────────
@@ -112,12 +78,11 @@ tech_ids = []
 for i in range(5):
     cur.execute("""
         INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
-        VALUES (%s, %s, %s, %s, %s)
+        VALUES (%s, %s, 'technician', %s, %s)
         ON CONFLICT (email) DO NOTHING
         RETURNING user_id
-    """, (fake.first_name(), fake.last_name(), 'technician',
-          f'technician{i+1}@farm.com',
-          generate_password_hash('tech123')))
+    """, (fake.first_name(), fake.last_name(),
+          f'technician{i+1}@farm.com', generate_password_hash('tech123')))
     result = cur.fetchone()
     if result:
         tech_ids.append(result[0])
@@ -125,55 +90,51 @@ conn.commit()
 print(f"  {len(tech_ids)} technicians inserted.")
 
 # ─── 3. OPERATORS ─────────────────────────────────────────────────
-print("Inserting operators + their user accounts...")
+print("Inserting operators...")
 operator_ids = []
 for _ in range(150):
-    name = fake.name()
-    name_parts = name.split(' ', 1)
-    first = name_parts[0][:15]
-    last = (name_parts[1] if len(name_parts) > 1 else '')[:15]
+    name  = fake.name()
+    parts = name.split(' ', 1)
+    first = parts[0][:15]
+    last  = (parts[1] if len(parts) > 1 else '')[:15]
 
-    cert_no = fake.bothify(text='??-####-??').upper() if random.random() > 0.1 else None
-    cert_type = random.choice(CERTIFICATE_TYPES) if cert_no else None
-    hire_date = fake.date_between(start_date='-10y', end_date='-6m')
-    phone = fake.numerify(text='05#########') if random.random() > 0.05 else None
-    email = fake.email() if random.random() > 0.1 else fake.bothify(text='op_??####@farm.com')
+    cert_no     = fake.bothify(text='??-####-??').upper() if random.random() > 0.1 else None
+    cert_type   = random.choice(CERTIFICATE_TYPES) if cert_no else None
     cert_expiry = fake.date_between(start_date='-2y', end_date='+3y') if cert_no else None
+    hire_date   = fake.date_between(start_date='-10y', end_date='-6m')
+    phone       = fake.numerify(text='05#########') if random.random() > 0.05 else None
+    email       = fake.email() if random.random() > 0.1 else fake.bothify(text='op_??####@farm.com')
 
     cur.execute("""
         INSERT INTO users (user_name, user_surname, user_role, email, password_hash)
-        VALUES (%s, %s, %s, %s, %s)
+        VALUES (%s, %s, 'operator', %s, %s)
         ON CONFLICT (email) DO NOTHING
         RETURNING user_id
-    """, (first, last, 'operator', email, generate_password_hash('op123')))
+    """, (first, last, email, generate_password_hash('op123')))
 
     result = cur.fetchone()
     if not result:
         continue
     user_id = result[0]
 
+    # operator_id = user_id (yeni schema)
     cur.execute("""
-        INSERT INTO operators (user_id, operator_name, certificate_no, certificate_type,
+        INSERT INTO operators (operator_id, operator_name, certificate_no, certificate_type,
                                hire_date, phone, email, certificate_expiry_date)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        RETURNING operator_id
-    """, (user_id, name, cert_no, cert_type, hire_date, phone, email, cert_expiry))
-    operator_ids.append(cur.fetchone()[0])
+    """, (user_id, f"{first} {last}", cert_no, cert_type, hire_date, phone, email, cert_expiry))
+    operator_ids.append(user_id)
 
 conn.commit()
 print(f"  {len(operator_ids)} operators inserted.")
 
-
-
-
-
-# ─── 2. COMPONENTS (30 records) ───────────────────────────────────
+# ─── 4. COMPONENTS ────────────────────────────────────────────────
 print("Inserting components...")
 component_ids = []
 for comp_name, category in COMPONENT_NAMES:
     unit_price = round(random.uniform(50, 8000), 2)
-    stock_qty = random.randint(0, 200)
-    notes = fake.sentence(nb_words=6) if random.random() > 0.5 else None
+    stock_qty  = random.randint(0, 200)
+    notes      = fake.sentence(nb_words=6) if random.random() > 0.5 else None
 
     cur.execute("""
         INSERT INTO components (component_name, category, unit_price, stock_quantity, notes)
@@ -181,58 +142,52 @@ for comp_name, category in COMPONENT_NAMES:
         RETURNING component_id
     """, (comp_name, category, unit_price, stock_qty, notes))
     component_ids.append(cur.fetchone()[0])
-
 conn.commit()
 print(f"  {len(component_ids)} components inserted.")
 
-# ─── 3. EQUIPMENTS (500 records) ──────────────────────────────────
+# ─── 5. EQUIPMENTS ────────────────────────────────────────────────
 print("Inserting equipment...")
 equipment_ids = []
 for _ in range(500):
-    eq_type = random.choice(EQUIPMENT_TYPES)
-    eq_name = random.choice(EQUIPMENT_NAMES[eq_type])
-    brand = random.choice(BRANDS)
-    model = fake.bothify(text='??-####').upper()
-    serial = fake.bothify(text='??########').upper()
-    purchase_date = fake.date_between(start_date='-15y', end_date='-1y')
-    purchase_cost = round(random.uniform(5000, 500000), 2)
-    status = random.choices(EQUIPMENT_STATUSES, weights=[65, 25, 10])[0]
+    eq_type  = random.choice(EQUIPMENT_TYPES)
+    eq_name  = random.choice(EQUIPMENT_NAMES[eq_type])
+    brand    = random.choice(BRANDS)
+    model    = fake.bothify(text='??-####').upper()
+    serial   = fake.bothify(text='??########').upper()
+    p_date   = fake.date_between(start_date='-15y', end_date='-1y')
+    p_cost   = round(random.uniform(5000, 500000), 2)
+    status   = random.choices(EQUIPMENT_STATUSES, weights=[65, 25, 10])[0]
+    req_cert = random.choice(CERTIFICATE_TYPES) if random.random() > 0.2 else None
 
     cur.execute("""
         INSERT INTO equipments (equipment_name, type, brand, model, serial_number,
                                 purchase_date, purchase_cost, status, required_certification)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING equipment_id
-    """, (eq_name, eq_type, brand, model, serial, purchase_date, purchase_cost, status,
-          random.choice(CERTIFICATE_TYPES) if random.random() > 0.2 else None))
+    """, (eq_name, eq_type, brand, model, serial, p_date, p_cost, status, req_cert))
     equipment_ids.append(cur.fetchone()[0])
 conn.commit()
 print(f"  {len(equipment_ids)} equipment inserted.")
 
-# ─── 4. MAINTENANCE (4500 records) ────────────────────────────────
-print("Inserting maintenance records... (this may take a moment)")
+# ─── 6. MAINTENANCE ───────────────────────────────────────────────
+print("Inserting maintenance records...")
 maintenance_ids = []
 for i in range(4500):
-    eq_id = random.choice(equipment_ids)
-    tech_id = random.choice(tech_ids) if random.random() > 0.1 else None
-    date_from = fake.date_between(start_date='-5y', end_date='today')
-    status = random.choices(MAINTENANCE_STATUSES, weights=[20, 25, 55])[0]
-
-    if status == 'Completed':
-        date_to = date_from + timedelta(days=random.randint(1, 30))
-    else:
-        date_to = None
-
-    cost = round(random.uniform(200, 50000), 2) if status in ('Completed', 'In Progress') else None
-    description = random.choice(MAINTENANCE_DESCRIPTIONS)
-    notes = fake.sentence(nb_words=8) if random.random() > 0.6 else None
+    eq_id   = random.choice(equipment_ids)
+    tech_id = random.choice(tech_ids) if tech_ids and random.random() > 0.1 else None
+    d_from  = fake.date_between(start_date='-5y', end_date='today')
+    status  = random.choices(MAINTENANCE_STATUSES, weights=[20, 25, 50, 5])[0]
+    d_to    = d_from + timedelta(days=random.randint(1, 30)) if status == 'Completed' else None
+    cost    = round(random.uniform(200, 50000), 2) if status in ('Completed', 'In Progress') else None
+    desc    = random.choice(MAINTENANCE_DESCRIPTIONS)
+    notes   = fake.sentence(nb_words=8) if random.random() > 0.6 else None
 
     cur.execute("""
         INSERT INTO maintenance (status, equipment_id, description, technician_id,
                                  cost, notes, date_from, date_to)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING maintenance_id
-    """, (status, eq_id, description, tech_id, cost, notes, date_from, date_to))
+    """, (status, eq_id, desc, tech_id, cost, notes, d_from, d_to))
     maintenance_ids.append(cur.fetchone()[0])
 
     if (i + 1) % 500 == 0:
@@ -242,46 +197,40 @@ for i in range(4500):
 conn.commit()
 print(f"  {len(maintenance_ids)} maintenance records inserted.")
 
-# ─── 5. MAINTENANCE_COMPONENT ─────────────────────────────────────
+# ─── 7. MAINTENANCE_COMPONENT ─────────────────────────────────────
 print("Inserting maintenance-component relations...")
 mc_count = 0
 for m_id in maintenance_ids:
     if random.random() > 0.4:
         chosen = random.sample(component_ids, random.randint(1, 4))
         for c_id in chosen:
-            quantity = random.randint(1, 5)
             cur.execute("""
                 INSERT INTO maintenance_component (maintenance_id, component_id, quantity)
                 VALUES (%s, %s, %s)
                 ON CONFLICT DO NOTHING
-            """, (m_id, c_id, quantity))
+            """, (m_id, c_id, random.randint(1, 5)))
             mc_count += 1
-
 conn.commit()
 print(f"  {mc_count} maintenance-component records inserted.")
 
-# ─── 5.5 ASSIGNMENTS ──────────────────────────────────────────────
+# ─── 8. ASSIGNMENTS ───────────────────────────────────────────────
 print("Inserting assignments...")
 assignment_count = 0
 for _ in range(1000):
-    eq_id = random.choice(equipment_ids)
-    op_id = random.choice(operator_ids)
-    start = fake.date_between(start_date='-3y', end_date='-1m')
-    end = start + timedelta(days=random.randint(7, 180))
-    time_period = f"{start} / {end}"
+    eq_id    = random.choice(equipment_ids)
+    op_id    = random.choice(operator_ids)
+    start    = fake.date_between(start_date='-3y', end_date='-1m')
+    end      = start + timedelta(days=random.randint(7, 180))
     approval = random.choice([True, False, None])
 
     cur.execute("""
         INSERT INTO assignments (equipment_id, op_id, time_period, approval)
         VALUES (%s, %s, %s, %s)
-    """, (eq_id, op_id, time_period, approval))
+    """, (eq_id, op_id, f"{start} / {end}", approval))
     assignment_count += 1
 
 conn.commit()
 print(f"  {assignment_count} assignments inserted.")
-
-
-
 
 # ─── SUMMARY ──────────────────────────────────────────────────────
 cur.execute("SELECT COUNT(*) FROM equipments");            eq_total   = cur.fetchone()[0]
@@ -289,6 +238,7 @@ cur.execute("SELECT COUNT(*) FROM maintenance");           m_total    = cur.fetc
 cur.execute("SELECT COUNT(*) FROM operators");             op_total   = cur.fetchone()[0]
 cur.execute("SELECT COUNT(*) FROM components");            comp_total = cur.fetchone()[0]
 cur.execute("SELECT COUNT(*) FROM maintenance_component"); mc_total   = cur.fetchone()[0]
+cur.execute("SELECT COUNT(*) FROM assignments");           as_total   = cur.fetchone()[0]
 
 print("\n✅ All data inserted successfully!")
 print(f"   equipments             : {eq_total}")
@@ -296,7 +246,8 @@ print(f"   maintenance            : {m_total}")
 print(f"   operators              : {op_total}")
 print(f"   components             : {comp_total}")
 print(f"   maintenance_component  : {mc_total}")
-print(f"   TOTAL                  : {eq_total + m_total + op_total + comp_total + mc_total}")
+print(f"   assignments            : {as_total}")
+print(f"   TOTAL                  : {eq_total + m_total + op_total + comp_total + mc_total + as_total}")
 
 cur.close()
 conn.close()

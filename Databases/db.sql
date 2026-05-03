@@ -1,290 +1,122 @@
-DROP TABLE IF EXISTS users;
-CREATE TABLE users(
-    user_id SERIAL PRIMARY KEY,
-    user_name VARCHAR(15) NOT NULL,
-    user_surname VARCHAR(15) NOT NULL,
-    user_nickname VARCHAR (20) NOT NULL,
-    user_password VARCHAR(25) NOT NULL,
-    user_role VARCHAR(10) NOT NULL
 
+-- =============================================================
+-- ENUMS
+-- =============================================================
 
+CREATE TYPE equipment_status AS ENUM ('Active', 'Maintenance', 'Broken');
+CREATE TYPE maintenance_status AS ENUM ('In Progress', 'Pending', 'Completed', 'Cancelled');
+CREATE TYPE user_role AS ENUM ('farm_manager', 'technician', 'operator');
+
+-- =============================================================
+-- USERS
+-- =============================================================
+
+CREATE TABLE users (
+    user_id       SERIAL PRIMARY KEY,
+    user_name     VARCHAR(15)  NOT NULL,
+    user_surname  VARCHAR(15)  NOT NULL,
+    user_role     user_role    NOT NULL,
+    email         VARCHAR(50)  NOT NULL UNIQUE DEFAULT 'no-reply@example.com',
+    password_hash TEXT         NOT NULL DEFAULT ''
 );
--- Stores farm equipment information including certification requirements.
-CREATE TABLE Equipments (
-    equipment_id SERIAL PRIMARY KEY,
-    status VARCHAR(15) CHECK (status IN ('Active', 'In Service', 'Broken')),
-    model VARCHAR(50) NOT NULL,
-    serial VARCHAR(50),
+
+-- =============================================================
+-- OPERATORS
+-- =============================================================
+
+CREATE TABLE operators (
+    operator_id             INT          PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    operator_name           VARCHAR(50)  NOT NULL,
+    certificate_no          VARCHAR(50),
+    certificate_type        VARCHAR(50),
+    certificate_expiry_date DATE,
+    hire_date               DATE,
+    phone                   VARCHAR(15),
+    email                   VARCHAR(50)  DEFAULT 'no-reply@example.com'
+);
+
+-- =============================================================
+-- EQUIPMENTS
+-- =============================================================
+
+CREATE TABLE equipments (
+    equipment_id          SERIAL PRIMARY KEY,
+    equipment_name        VARCHAR(100) NOT NULL,
+    type                  VARCHAR(50)  NOT NULL,
+    brand                 VARCHAR(50),
+    model                 VARCHAR(30),
+    serial_number         VARCHAR(30)  DEFAULT '00000',
+    purchase_date         DATE         DEFAULT '2025-02-02',
+    purchase_cost         NUMERIC(12,2),
+    status                equipment_status NOT NULL DEFAULT 'Broken',
     required_certification VARCHAR(50),
-    specs VARCHAR(100)
+    created_at            TIMESTAMP    NOT NULL DEFAULT NOW(),
+    updated_at            TIMESTAMP    NOT NULL DEFAULT NOW()
 );
 
---Records all maintenance activities performed on equipment
-CREATE TABLE Maintenance (
+-- =============================================================
+-- COMPONENTS
+-- =============================================================
+
+CREATE TABLE components (
+    component_id   SERIAL PRIMARY KEY,
+    component_name VARCHAR(50)  NOT NULL,
+    unit_price     NUMERIC(10,2),
+    category       VARCHAR(15),
+    stock_quantity INT          NOT NULL DEFAULT 0,
+    notes          VARCHAR(100)
+);
+
+-- =============================================================
+-- MAINTENANCE
+-- =============================================================
+
+CREATE TABLE maintenance (
     maintenance_id SERIAL PRIMARY KEY,
-    status VARCHAR(15),
-    date DATE NOT NULL,
-    total_cost DECIMAL(10,2),
-    time_period VARCHAR(25),
-    equipment_id INT REFERENCES Equipments(equipment_id)
+    equipment_id   INT          NOT NULL REFERENCES equipments(equipment_id) ON DELETE CASCADE,
+    technician_id  INT  REFERENCES users(user_id) ON DELETE SET NULL,
+    status         maintenance_status NOT NULL DEFAULT 'In Progress',
+    date_from      DATE,
+    date_to        DATE,
+    cost           NUMERIC(12,2) DEFAULT 0,
+    description    VARCHAR(200) DEFAULT 'Not Detected',
+    notes          VARCHAR(100),
+
+    CONSTRAINT chk_maintenance_dates CHECK (date_to IS NULL OR date_to >= date_from)
 );
 
--- Stores spare parts and components used in maintenance
-CREATE TABLE Components (
-    component_id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
-    cost DECIMAL(10,2)
-);
+-- =============================================================
+-- MAINTENANCE_COMPONENT  (N:M junction)
+-- =============================================================
 
--- Stores operator information including certification details
-CREATE TABLE Operators (
-    op_id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
-    certificate_no VARCHAR(50),
-    certificate_type VARCHAR(50),
-    certificate_expiry_date DATE CHECK (certificate_expiry_date > '2000-01-01')
-);
-
--- Links operators to equipment for a specific time period
-CREATE TABLE Assignments (
-    assignment_id SERIAL PRIMARY KEY,
-    time_period VARCHAR(25),
-    approval BOOLEAN,
-    equipment_id INT REFERENCES Equipments(equipment_id),
-    op_id INT REFERENCES Operators(op_id)
-);
-
--- Junction table for the N:M relationship between Maintenance and Components
-CREATE TABLE Maintenance_Component (
-    maintenance_id INT REFERENCES Maintenance(maintenance_id),
-    component_id INT REFERENCES Components(component_id),
-    quantity INT NOT NULL,
+CREATE TABLE maintenance_component (
+    maintenance_id INT NOT NULL REFERENCES maintenance(maintenance_id) ON DELETE CASCADE,
+    component_id   INT NOT NULL REFERENCES components(component_id)   ON DELETE RESTRICT,
+    quantity       INT NOT NULL CHECK (quantity > 0),
     PRIMARY KEY (maintenance_id, component_id)
 );
 
-
-SELECT * FROM users;
-
-ALTER TABLE users
-DROP column user_nickname;
-
-ALTER TABLE users
-ADD column email VARCHAR(50) NOT NULL DEFAULT 'no-reply@example.com';
-
-
-
-UPDATE users
-SET user_role = 'admin'
-WHERE user_id =1;
-
-UPDATE users
-SET email = 'gozdeuzal@gmail.com'
-WHERE user_id = 2;
-
-SELECT * FROM users;
-
-ALTER TABLE equipments
-ADD COLUMN equipment_name VARCHAR(15) NOT NULL;
-ALTER TABLE equipments
-ADD COLUMN type VARCHAR(15) NOT NULL;
-ALTER TABLE equipments
-ADD COLUMN brand VARCHAR(15) NOT NULL;
-ALTER TABLE equipments
-ADD COLUMN model VARCHAR(15) NOT NULL;
-ALTER TABLE equipments
-ADD COLUMN serial_number VARCHAR(15) NOT NULL DEFAULT '00000';
-ALTER TABLE equipments
-ADD COLUMN  purchase_date DATE;
-ALTER TABLE equipments
-ADD COLUMN purchase_cost DECIMAL(12,2);
-
-ALTER TABLE equipments
-ALTER COLUMN purchase_date SET DEFAULT '02.02.2025';
-
-ALTER TABLE equipments
-ALTER COLUMN brand DROP NOT NULL;
-
-ALTER TABLE equipments
-ALTER COLUMN model DROP NOT NULL;
-
-ALTER TABLE equipments
-ALTER COLUMN purchase_cost DROP NOT NULL;
-
-ALTER TABLE equipments
-ALTER COLUMN serial_number DROP NOT NULL;
-
-CREATE TYPE equipment_status AS ENUM ('Active', 'Maintenance', 'Broken');
-
-ALTER TABLE equipments
-ADD COLUMN status equipment_status DEFAULT 'Broken';
-
-CREATE TYPE maintenance_status AS ENUM ('Pending', 'In Progress', 'Completed');
-
-ALTER TABLE maintenance
-ALTER COLUMN status TYPE maintenance_status USING status::maintenance_status,
-    ALTER COLUMN status SET DEFAULT 'In Progress';
-
-ALTER TABLE maintenance
-DROP COLUMN date;
-
-ALTER TABLE maintenance
-ADD COLUMN date_from DATE;
-
-ALTER TABLE maintenance
-ADD COLUMN date_to DATE;
-
-ALTER TABLE maintenance
-DROP COLUMN time_period;
-
-ALTER TABLE maintenance
-ADD COLUMN description VARCHAR(200) NOT NULL DEFAULT 'Not Detected';
-
-ALTER TABLE maintenance
-ADD op_id INT REFERENCES Operators(op_id) DEFAULT NULL;
-
-ALTER TABLE maintenance
-ADD COLUMN cost DECIMAL(12,2) DEFAULT 0;
-
-ALTER TABLE maintenance
-ADD COLUMN notes VARCHAR(100) DEFAULT NULL;
-
-ALTER TABLE maintenance
-DROP COLUMN total_cost;
-
-ALTER TABLE maintenance
-ADD COLUMN maintenance_date DATE NOT NULL;
-
-ALTER TABLE components
-ADD COLUMN category VARCHAR(15) DEFAULT NULL;
-
-ALTER TABLE components
-ADD COLUMN stock_quantity INT DEFAULT 0;
-
-ALTER TABLE components
-RENAME COLUMN cost TO unit_cost;
-
-ALTER TABLE components
-RENAME COLUMN name TO component_name;
-
-ALTER TABLE components
-RENAME COLUMN unit_cost TO unit_price;
-
-ALTER TABLE components
-ADD COLUMN notes VARCHAR(100) DEFAULT NULL;
-
-ALTER TABLE operators
-ADD COLUMN last_name VARCHAR(15) NOT NULL DEFAULT NULL;
-
-ALTER TABLE operators
-ADD COLUMN hire_date DATE;
-
-ALTER TABLE operators
-ADD COLUMN phone INT;
-
-ALTER TABLE operators
-ADD COLUMN email VARCHAR(50) DEFAULT 'no-reply@example.com';
-
-ALTER TABLE operators
-RENAME COLUMN op_id TO operator_id;
-
-ALTER TABLE operators
-DROP COLUMN certificate_expiry_date;
-
-ALTER TABLE operators
-DROP COLUMN phone;
-
-ALTER TABLE operators
-ADD COLUMN phone VARCHAR(11);
-
-ALTER TABLE equipments ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
-ALTER TABLE equipments ADD COLUMN updated_at TIMESTAMP DEFAULT NOW();
-
-
-ALTER TABLE operators ALTER COLUMN phone TYPE VARCHAR(15);
-
-ALTER TABLE operators
-DROP COLUMN email;
-
-
-
-
-
-
-ALTER TABLE equipments
-  ALTER COLUMN equipment_name TYPE VARCHAR(100),
-  ALTER COLUMN type TYPE VARCHAR(50),
-  ALTER COLUMN brand TYPE VARCHAR(50),
-  ALTER COLUMN model TYPE VARCHAR(30),
-  ALTER COLUMN serial_number TYPE VARCHAR(30);
-
-
-
-SELECT unnest(enum_range(NULL::equipment_status));
-
-ALTER TYPE equipment_status ADD VALUE 'In Service';
-
-ALTER TABLE users ADD CONSTRAINT users_email_unique UNIQUE (email);
-
-TRUNCATE TABLE maintenance_component CASCADE;
-TRUNCATE TABLE maintenance CASCADE;
-TRUNCATE TABLE equipments CASCADE;
-TRUNCATE TABLE operators CASCADE;
-TRUNCATE TABLE components CASCADE;
-TRUNCATE TABLE users CASCADE;
-
-
-SELECT 'equipments' AS tablo, COUNT(*) FROM equipments
-UNION ALL
-SELECT 'maintenance', COUNT(*) FROM maintenance
-UNION ALL
-SELECT 'operators', COUNT(*) FROM operators
-UNION ALL
-SELECT 'components', COUNT(*) FROM components
-UNION ALL
-SELECT 'maintenance_component', COUNT(*) FROM maintenance_component
-UNION ALL
-SELECT 'users', COUNT(*) FROM users;
-
-INSERT INTO users (user_name, user_surname, user_password, user_role, email,)
-VALUES ('Buse', 'Eksi', '823607', 'technician' , 'bus3eks1@gmail.com')
-
-ALTER TABLE users
-ADD COLUMN password_hash TEXT NOT NULL DEFAULT '';
-
-ALTER TABLE users DROP COLUMN user_password;
-
-ALTER TABLE equipments
-ADD COLUMN required_certification VARCHAR(50) DEFAULT NULL;
-
-SELECT column_name FROM information_schema.columns
-WHERE table_name = 'equipments' OR table_name = 'maintenance'
-ORDER BY table_name, column_name;
-
--- 1. operators tablosuna user_id ekle
-ALTER TABLE operators ADD COLUMN user_id INT REFERENCES users(user_id);
-
--- 2. users tablosundaki 'user' rolünü 'operator' olarak güncelle
-UPDATE users SET user_role = 'operator' WHERE user_role = 'user';
-
--- 3. users tablosundaki 'admin' rolünü 'farm_manager' olarak güncelle
-UPDATE users SET user_role = 'farm_manager' WHERE user_role = 'admin';
-
-ALTER TABLE users
-    ALTER COLUMN user_role TYPE VARCHAR(20);
-
-SELECT character_maximum_length
-FROM information_schema.columns
-WHERE table_name = 'users' AND column_name = 'user_role';
-
-SELECT character_maximum_length, column_name
-FROM information_schema.columns
-WHERE table_name = 'users';
-
-ALTER TABLE operators ADD COLUMN certificate_expiry_date DATE;
-
-ALTER TABLE maintenance
-ADD COLUMN technician_id INT REFERENCES users(user_id);
-
-ALTER TABLE operators
-ADD CONSTRAINT fk_operators_user
-FOREIGN KEY (user_id) REFERENCES users(user_id);
+-- =============================================================
+-- ASSIGNMENTS
+-- =============================================================
+
+CREATE TABLE assignments (
+    assignment_id SERIAL PRIMARY KEY,
+    equipment_id  INT          NOT NULL REFERENCES equipments(equipment_id) ON DELETE CASCADE,
+    op_id         INT          NOT NULL REFERENCES operators(operator_id)   ON DELETE CASCADE,
+    time_period   VARCHAR(25),
+    approval      BOOLEAN      DEFAULT FALSE
+);
+
+-- =============================================================
+-- INDEXES  (performance)
+-- =============================================================
+
+CREATE INDEX idx_maintenance_equipment  ON maintenance(equipment_id);
+CREATE INDEX idx_maintenance_technician ON maintenance(technician_id);
+CREATE INDEX idx_assignments_equipment  ON assignments(equipment_id);
+CREATE INDEX idx_assignments_operator   ON assignments(op_id);
+
+-- =============================================================
+-- END OF SCHEMA
+-- =============================================================

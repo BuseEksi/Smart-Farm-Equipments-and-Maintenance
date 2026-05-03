@@ -5,24 +5,7 @@
 {% block topbar_sub %}{{ maintenance.maintenance_id if maintenance else 'Create new maintenance record' }}{% endblock %}
 {% block topbar_actions %} <a href="/maintenance" class="btn">← Back</a>
 {% endblock %}
-<style>
-    /* Okları her koşulda gizle */
-    input[type=number]::-webkit-outer-spin-button,
-    input[type=number]::-webkit-inner-spin-button {
-        -webkit-appearance: none !important;
-        margin: 0 !important;
-    }
 
-    input[type=number] {
-        -moz-appearance: textfield !important; /* Firefox */
-        appearance: none !important;
-    }
-
-    /* Miktar kutusunun içindeki rakamı tam ortala ve okları engelle */
-    .qty-input {
-        pointer-events: none; /* Kutunun içine tıklanıp okların çıkmasını engeller, sadece butonlarla değişir */
-    }
-</style>
 {% block content %}
 
 <div style="max-width:640px;">
@@ -131,7 +114,7 @@
 
     addComponentToList(componentId, name, stock);
 
-    // Seçilen öğeyi menüden temizle ve gizle
+
     selectElement.value = "";
     option.style.display = "none";
 }
@@ -140,7 +123,7 @@ function addComponentToList(id, name, stock) {
     const container = document.getElementById('selected_components_container');
     const list = document.getElementById('component_list');
 
-    // Konteynırı görünür yap
+
     container.style.display = "block";
 
     const itemHtml = `
@@ -175,10 +158,8 @@ function addComponentToList(id, name, stock) {
 function removeComponentFromList(id) {
     document.getElementById(`row_${id}`).remove();
 
-    // Menüdeki seçeneği tekrar görünür yap
     document.getElementById(`opt_${id}`).style.display = "block";
 
-    // Eğer hiç parça kalmadıysa konteynırı gizle
     const list = document.getElementById('component_list');
     if (list.children.length === 0) {
         document.getElementById('selected_components_container').style.display = "none";

@@ -13,7 +13,7 @@ app.secret_key = '823607-Buse'
 def connect_db():
     conn= psycopg2.connect(
         host="localhost",
-        database="farm_eq_maintenance",
+        database="farm_final",
         user="buseeksi",
         password="823607"
     )
@@ -81,16 +81,14 @@ def dashboard():
         cur.execute("""
             SELECT COUNT(*) AS cnt 
             FROM assignments a
-            JOIN operators o ON a.op_id = o.operator_id
-            WHERE o.user_id = %s AND a.approval = true
+            WHERE a.op_id = %s AND a.approval = true
         """, (session.get("user_id"),))
         my_tasks = cur.fetchone()["cnt"]
 
         cur.execute("""
             SELECT COUNT(*) AS cnt 
             FROM assignments a
-            JOIN operators o ON a.op_id = o.operator_id
-            WHERE o.user_id = %s AND a.approval IS NULL
+            WHERE a.op_id = %s AND a.approval IS NULL
         """, (session.get("user_id"),))
         my_pending = cur.fetchone()["cnt"]
     else:
@@ -99,19 +97,19 @@ def dashboard():
 
     if session.get("role") == "technician":
         cur.execute("""
-                    SELECT COUNT(*) AS cnt 
-                    FROM maintenance m
-                    JOIN users t ON t.user_id = m.technician_id
-                    WHERE t.user_id = %s 
-                """, (session.get("user_id"),))
+            SELECT COUNT(*) AS cnt 
+            FROM maintenance m
+            WHERE m.technician_id = %s
+            AND m.status IN ('In Progress', 'Pending')
+        """, (session.get("user_id"),))
         my_tasks = cur.fetchone()["cnt"]
 
         cur.execute("""
-                    SELECT COUNT(*) AS cnt 
-                    FROM maintenance m
-                    JOIN users t ON t.user_id = m.technician_id
-                    WHERE t.user_id = %s 
-                """, (session.get("user_id"),))
+            SELECT COUNT(*) AS cnt 
+            FROM maintenance m
+            WHERE m.technician_id = %s
+            AND m.status = 'Pending'
+        """, (session.get("user_id"),))
         my_pending = cur.fetchone()["cnt"]
 
 
@@ -151,7 +149,7 @@ def signup_post():
     surname= request.form['surname']
     password= request.form['password']
     hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
-    role= "user"
+    role= "operator"
     email= request.form['email']
 
     cur.execute("SELECT * FROM users WHERE email = %s", (email,))
@@ -168,12 +166,12 @@ def signup_post():
         new_user_id = cur.fetchone()['user_id']
 
         cur.execute(
-            "INSERT INTO operators (operator_name, user_id) VALUES (%s, %s)",
+            "INSERT INTO operators (operator_name, operator_id) VALUES (%s, %s)",
             (f"{name} {surname}", new_user_id))
         conn.commit()
         cur.close()
         conn.close()
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('login'))
 @app.route('/', methods=['GET'])
 def login():
     return render_template("login.html")
@@ -347,9 +345,9 @@ def equipment_detail(equipment_id):
     cur.execute("""
         SELECT m.maintenance_id, m.date_from, m.date_to, m.status, m.cost,
                m.description, m.notes,
-               o.operator_name
+               t.user_name
         FROM maintenance m
-        LEFT JOIN operators o ON m.operator_id = o.operator_id
+        LEFT JOIN users t ON m.technician_id = t.user_id
         WHERE m.equipment_id = %s
         ORDER BY m.date_from DESC
     """, (equipment_id,))
@@ -882,9 +880,8 @@ def components():
     conn = connect_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-
-    cur.execute("SELECT COUNT(*) FROM components")
-    total = cur.fetchone()['count']
+    cur.execute("SELECT COUNT(*) AS cnt  FROM components")
+    total = cur.fetchone()['cnt']
 
 
     offset = (page - 1) * per_page
@@ -979,16 +976,14 @@ def operators():
     conn = connect_db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-
-    cur.execute("SELECT COUNT(*) FROM operators")
+    cur.execute("SELECT COUNT(*) AS count FROM operators")
     total = cur.fetchone()['count']
-
 
     offset = (page - 1) * per_page
     cur.execute("""
-        SELECT o.*, COUNT(m.maintenance_id) AS maintenance_count
+        SELECT o.*, COUNT(a.assignment_id) AS assignment_count
         FROM operators o
-        LEFT JOIN maintenance m ON o.operator_id = m.operator_id
+        LEFT JOIN assignments a ON o.operator_id = a.op_id
         GROUP BY o.operator_id
         ORDER BY o.operator_id DESC
         LIMIT %s OFFSET %s
@@ -1040,7 +1035,7 @@ def operator_new_form():
         # 2. Create the operators profile row linked to that user
         cur.execute(
             "INSERT INTO operators (operator_name, certificate_no, certificate_type, "
-            "hire_date, phone, email, user_id) "
+            "hire_date, phone, email, operator_id) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s)",
             (operator_name, certificate_no, certificate_type,
              hire_date, phone, email, new_user_id)
@@ -1086,20 +1081,14 @@ def operator_edit(operator_id):
 def operator_delete(operator_id):
     if session.get("role") == 'farm_manager':
         conn = connect_db()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("SELECT user_id FROM operators WHERE operator_id = %s", (operator_id,))
-        op = cur.fetchone()
-
-        cur.execute("DELETE FROM operators WHERE operator_id = %s", (operator_id,))
-        if op and op['user_id']:
-            cur.execute("DELETE FROM users WHERE user_id = %s", (op['user_id'],))
+        cur = conn.cursor()
+        cur.execute("DELETE FROM users WHERE user_id = %s", (operator_id,))
         conn.commit()
         cur.close()
         conn.close()
         return redirect(url_for('operators'))
     else:
         return redirect(url_for('login'))
-
 @app.route("/technicians")
 def technicians():
     if session.get("role") == 'farm_manager':
@@ -1107,8 +1096,9 @@ def technicians():
         per_page = 10
         conn = connect_db()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("SELECT COUNT(*) FROM users WHERE user_role = 'technicians'")
-        total = cur.fetchone()['count']
+        cur.execute("SELECT COUNT(*) AS cnt FROM users WHERE user_role = 'technician'")
+        total = cur.fetchone()['cnt']
+
 
         offset = (page - 1) * per_page
         cur.execute("SELECT * FROM users WHERE user_role = 'technician' ORDER BY user_id DESC LIMIT %s OFFSET %s",
@@ -1185,15 +1175,8 @@ def assignments():
     params = []
 
     if session.get("role") == "operator":
-        cur.execute("SELECT operator_id FROM operators WHERE user_id = %s", (session.get("user_id"),))
-        op = cur.fetchone()
-        if not op:
-            cur.close()
-            conn.close()
-            return render_template("assignments_list.html", assignments=[],
-                                   total=0, current_page=1, total_pages=1)
         base_query += " AND a.op_id = %s"
-        params.append(op["operator_id"])
+        params.append(session.get("user_id"))
 
     if q:
         base_query += " AND (e.equipment_name ILIKE %s OR o.operator_name ILIKE %s)"
